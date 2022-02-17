@@ -29,3 +29,4 @@ for day in range(len(kospibasket)):
 
 
 
+a = []
