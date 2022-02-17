@@ -6,7 +6,7 @@ from main2lib import *
 # 코스피 200 (180)
 # 코스닥 150 (390)
 
-Connect()
+#Connect()
 #
 # marketinfo = MarketInfo('U001')
 # info = marketinfo.GetstockPeriodInfo(3300)
