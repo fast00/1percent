@@ -4,8 +4,8 @@ class UseOSCILLATOR:
     def __init__(self):
         self.file = FileMethods()
         self.indicators = Indicators()
-        self.codelist = self.file.GetStockList('코스피200!')
-        self.kospibasket = self.file.MarketDayList('코스피200!')
+        self.codelist = self.file.GetStockList('코스닥150!')
+        self.kospibasket = self.file.MarketDayList('코스닥150!')
         self.codedaybasket = {}
         self.ocillatorlist = {}  # 날짜,다음날고가증감률, 오실레이터,오늘증감률
         self.checkplus = {}
@@ -41,7 +41,7 @@ class UseOSCILLATOR:
     def MackCodeDayBasket(self):
         for code in self.codelist:
             self.codedaybasket[code] = []
-            basket = self.file.StockDayList('코스피200!', code)
+            basket = self.file.StockDayList('코스닥150!', code)
             for i in range(len(basket)):
                 self.codedaybasket[code] += [basket[i]]
 
@@ -181,8 +181,8 @@ class UsePPO:
     def __init__(self):
         self.file = FileMethods()
         self.indicators = Indicators()
-        self.codelist = self.file.GetStockList('코스피200!')
-        self.kospibasket = self.file.MarketDayList('코스피200!')
+        self.codelist = self.file.GetStockList('코스닥150!')
+        self.kospibasket = self.file.MarketDayList('코스닥150!')
         self.checktoday = CheckToday()
         self.totalresult = TotalResult()
         self.codedaybasket = {}
@@ -194,20 +194,13 @@ class UsePPO:
     def MackCodeDayBasket(self):
         for code in self.codelist:
             self.codedaybasket[code] = []
-            basket = self.file.StockDayList('코스피200!', code)
+            basket = self.file.StockDayList('코스닥150!', code)
             for i in range(len(basket)):
                 self.codedaybasket[code] += [basket[i]]
 
     def MackoverlapPPO(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
         percent = 0
         if day > 400:  # 1년 데이터 축적
-            try:
-                percent = round(self.particularcount / self.generalcount * 100, 2)
-                print("전체: ", self.generalcount, " 증가: ", self.particularcount, " total: ",
-                      percent, "%")
-            except ZeroDivisionError:
-                print("0%")
-                pass
             todaydate = self.kospibasket[day][0]
             for keys, val in self.codedaybasket.items():
                 todaystockbasket = []
@@ -230,6 +223,12 @@ class UsePPO:
                                     print(keys, "--")
                                     self.particularcount += 1
                         break
+            try:
+                percent = round(self.particularcount / self.generalcount * 100, 2)
+                print("전체: ", self.generalcount, " 증가: ", self.particularcount, " total: ",
+                      percent, "%")
+            except ZeroDivisionError:
+                print("0%")
         return percent
     # def MackoverlapPPO(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
     #     if day > 400:  # 1년 데이터 축적
