@@ -199,24 +199,23 @@ class UsePPO:
             stocklist.append(sortlist[i][0])
         return stocklist
 
-    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
+    def MackoverlapPPO(self, day, MAdayrange, stocklist , count):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
         percent = 0
         generalcount = 0
         particularcount = 0
-        if day > 400:  # 1년 데이터 축적
+        if day > 300:  # 1년 데이터 축적
             todaydate = self.kospibasket[day][0]
             for keys, val in self.codedaybasket.items():
                 todaystockbasket = []
                 for j in range(len(val)):
                     if val[j][0] == todaydate and keys in stocklist:
                         newval = [val[i] for i in range(j)]  # 다음날것을 미리 반영해서 확률에 넣어버림 그래서 뺌
-                        if len(newval) >= MAdayrange and len(newval) > 400:
-                            # 400일 이하 다 지우기 -----
-                            if len(newval) % 400 != 0:
-                                newval = [newval[-i] for i in range(1,401)]
-                                newval.reverse()  # ---- 수정 하기 400씩 이동하게
+                        if len(newval) >= MAdayrange and len(newval) > 300:
+                            if len(newval) % 300 != 0:
+                                newval = [newval[-i] for i in range(1, 301)]
+                                newval.reverse()  # 400일 데이터 기반으로 작동함. 400일씩 이동함
                             stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
-                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
+                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1, count)
                             self.overlapppo[keys] = stockoverlapppolist
                             for i in range(0, MAdayrange):
                                 todaystockbasket.append(val[j - MAdayrange + i + 1])
