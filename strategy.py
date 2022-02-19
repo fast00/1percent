@@ -199,7 +199,7 @@ class UsePPO:
             stocklist.append(sortlist[i][0])
         return stocklist
 
-    def MackoverlapPPO(self, day, MAdayrange, stocklist , count):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
+    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
         percent = 0
         generalcount = 0
         particularcount = 0
@@ -215,7 +215,7 @@ class UsePPO:
                                 newval = [newval[-i] for i in range(1, 301)]
                                 newval.reverse()  # 400일 데이터 기반으로 작동함. 400일씩 이동함
                             stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
-                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1, count)
+                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
                             self.overlapppo[keys] = stockoverlapppolist
                             for i in range(0, MAdayrange):
                                 todaystockbasket.append(val[j - MAdayrange + i + 1])
