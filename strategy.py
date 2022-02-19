@@ -1,11 +1,11 @@
 from main2lib import *
 
 class UseOSCILLATOR:
-    def __init__(self):
+    def __init__(self,market):
         self.file = FileMethods()
         self.indicators = Indicators()
-        self.codelist = self.file.GetStockList('코스닥150!')
-        self.kospibasket = self.file.MarketDayList('코스닥150!')
+        self.codelist = self.file.GetStockList(market)
+        self.kospibasket = self.file.MarketDayList(market)
         self.codedaybasket = {}
         self.ocillatorlist = {}  # 날짜,다음날고가증감률, 오실레이터,오늘증감률
         self.checkplus = {}
@@ -22,7 +22,7 @@ class UseOSCILLATOR:
         self.negativecount = 0
         self.negativegeneralcount = 0
         self.negativeparticularcount = 0
-        self.MackMacdOscillator()
+        self.MackMacdOscillator(market)
 
     def DicInitialization(self):
         for keys, val in self.codedaybasket.items():
@@ -38,15 +38,15 @@ class UseOSCILLATOR:
                 continue
             self.minusOS_average[key] = round(sum(val) / len(val), 2)
 
-    def MackCodeDayBasket(self):
+    def MackCodeDayBasket(self, market):
         for code in self.codelist:
             self.codedaybasket[code] = []
-            basket = self.file.StockDayList('코스닥150!', code)
+            basket = self.file.StockDayList(market, code)
             for i in range(len(basket)):
                 self.codedaybasket[code] += [basket[i]]
 
-    def MackMacdOscillator(self):  # 꼭 따로 선언해서 만들어줘야함
-        self.MackCodeDayBasket()
+    def MackMacdOscillator(self, market):  # 꼭 따로 선언해서 만들어줘야함
+        self.MackCodeDayBasket(market)
         self.DicInitialization()
         for keys, val in self.codedaybasket.items():
             if len(val) >= 26:
@@ -159,28 +159,27 @@ class UseOSCILLATOR:
 
 
 class UsePPO:
-    def __init__(self):
+    def __init__(self, market):
         self.file = FileMethods()
         self.indicators = Indicators()
-        self.codelist = self.file.GetStockList('코스닥150!')
-        self.kospibasket = self.file.MarketDayList('코스닥150!')
+        self.codelist = self.file.GetStockList(market)
+        self.kospibasket = self.file.MarketDayList(market)
         self.checktoday = CheckToday()
         self.totalresult = TotalResult()
         self.codedaybasket = {}
         self.overlapppo = {}
         self.generalcount = 0
         self.particularcount = 0
-        self.MackCodeDayBasket()
+        self.MackCodeDayBasket(market)
 
-    def MackCodeDayBasket(self):
+    def MackCodeDayBasket(self, market):
         for code in self.codelist:
             self.codedaybasket[code] = []
-            basket = self.file.StockDayList('코스닥150!', code)
+            basket = self.file.StockDayList(market, code)
             for i in range(len(basket)):
                 self.codedaybasket[code] += [basket[i]]
 
     def CheckStrogStock(self, startdate, enddate, startpecent):
-        self.MackCodeDayBasket()
         generalcount = 0
         particularcount = 0
         fitcount = {}
@@ -213,7 +212,7 @@ class UsePPO:
                         newval = [val[i] for i in range(j)]  # 다음날것을 미리 반영해서 확률에 넣어버림 그래서 뺌
                         if len(newval) >= MAdayrange:
                             stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
-                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
+                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1, len(newval))
                             self.overlapppo[keys] = stockoverlapppolist
                             for i in range(0, MAdayrange):
                                 todaystockbasket.append(val[j - MAdayrange + i + 1])
@@ -232,7 +231,7 @@ class UsePPO:
             try:
                 percent = round(particularcount / generalcount * 100, 2)
                 print("전체: ", self.generalcount, " 증가: ", self.particularcount, " total: ",
-                      round(self.particularcount / self.generalcount * 100), "%")
+                      round(self.particularcount / self.generalcount * 100 , 1), "%")
             except ZeroDivisionError:
                 print("0%")
         return percent

@@ -3,8 +3,8 @@ from matplotlib import pyplot as plt
 import pandas as pd
 
 
-useppo = UsePPO()
-# useoscillator = UseOSCILLATOR()
+useppo = UsePPO('코스닥150!')
+# useoscillator = UseOSCILLATOR('코스닥150!')
 kospibasket = useppo.kospibasket
 count = 0
 graphcount = 0
