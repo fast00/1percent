@@ -1,7 +1,5 @@
 from strategy import *
-import numpy as np
 from matplotlib import pyplot as plt
-import matplotlib.ticker as ticker
 import pandas as pd
 
 

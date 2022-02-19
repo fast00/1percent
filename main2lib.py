@@ -576,14 +576,14 @@ class FileMethods:
         return codelistinfile, kospibasket2, basket2
 
     def StockDayList(self, filename, code):
-        f = open(f"C:\\Users\\82104\\Desktop\\{filename}\\{code}.txt", 'r', encoding='utf-8')
+        f = open(f"C:\\주가정보\\{filename}\\{code}.txt", 'r', encoding='utf-8')
         txt = f.read()
         result = self.ChangeDayList(txt)
         f.close()
         return result
 
     def MarketDayList(self, filename):
-        f = open(f"C:\\Users\\82104\\Desktop\\{filename}\\{filename}.txt", 'r', encoding='utf-8')
+        f = open(f"C:\\주가정보\\{filename}\\{filename}.txt", 'r', encoding='utf-8')
         txt = f.read()
         result = self.ChangeDayList(txt)
         f.close()
@@ -605,7 +605,7 @@ class FileMethods:
         return result
 
     def GetStockList(self, filename):
-        f = open(f"C:\\Users\\82104\\Desktop\\{filename}\\codelist.txt", 'r', encoding='utf-8')
+        f = open(f"C:\\주가정보\\{filename}\\codelist.txt", 'r', encoding='utf-8')
         txt = f.read()
         txt = txt.replace('[', '').replace(']', '').replace(' ', '').replace('\r', '').replace('\'', '')
         result = txt.split(",")
