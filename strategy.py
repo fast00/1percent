@@ -210,9 +210,13 @@ class UsePPO:
                 for j in range(len(val)):
                     if val[j][0] == todaydate and keys in stocklist:
                         newval = [val[i] for i in range(j)]  # 다음날것을 미리 반영해서 확률에 넣어버림 그래서 뺌
-                        if len(newval) >= MAdayrange:
+                        if len(newval) >= MAdayrange and len(newval) > 400:
+                            # 400일 이하 다 지우기 -----
+                            if len(newval) % 400 != 0:
+                                newval = [newval[-i] for i in range(1,401)]
+                                newval.reverse()  # ---- 수정 하기 400씩 이동하게
                             stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
-                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1, len(newval))
+                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
                             self.overlapppo[keys] = stockoverlapppolist
                             for i in range(0, MAdayrange):
                                 todaystockbasket.append(val[j - MAdayrange + i + 1])
@@ -228,12 +232,16 @@ class UsePPO:
                                     particularcount += 1
                                     self.particularcount += 1
                         break
-            try:
-                percent = round(particularcount / generalcount * 100, 2)
-                print("전체: ", self.generalcount, " 증가: ", self.particularcount, " total: ",
-                      round(self.particularcount / self.generalcount * 100 , 1), "%")
-            except ZeroDivisionError:
-                print("0%")
+            if generalcount != 0:
+                try:
+                    percent = round(particularcount / generalcount * 100, 2)
+                    print("전체: ", self.generalcount, " 증가: ", self.particularcount, " total: ",
+                          round(self.particularcount / self.generalcount * 100, 1), "%")
+                except ZeroDivisionError:
+                    percent = 0
+                    print("0%")
+            else:
+                return 1
         return percent
 
     # def MackoverlapPPO(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함

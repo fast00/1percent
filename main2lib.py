@@ -425,13 +425,10 @@ class PPOMethod:
                 self.PPOrangePercent[self.PPOrange[0] + i] = 0
         return self.PPOrangePercent
 
-    def Get_result(self, pathday):
-        k = 1
-        if pathday > 400:
-            k = int(pathday / 400)
+    def Get_result(self):
         result = []
         for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):
-            if self.PPOrangePaticularcount[self.PPOrange[0] + i] >= 8 * k and \
+            if self.PPOrangePaticularcount[self.PPOrange[0] + i] >= 8 and \
                     self.PPOrangePercent[self.PPOrange[0] + i] >= 85:
                 result.append(round(self.PPOrange[0] + i, 2))
                 # print(self.rateofchange,"\n",round(self.PPOrange[0] + i,2),self.PPOrangePercent[self.PPOrange[0] + i],"\n", self.daylist[self.PPOrange[0] + i])
@@ -525,11 +522,11 @@ class TotalResult:
         result += method.Get_result_forMarket()
         return result  # [이격도]
 
-    def StockOverlapppoListFromFile(self, PPO, increaserate, pathday):
+    def StockOverlapppoListFromFile(self, PPO, increaserate):
         result = []
         ppomethod = PPOMethod()
         ppomethod.Condition_Setting(PPO, increaserate)
-        middleresult = ppomethod.Get_result(pathday)
+        middleresult = ppomethod.Get_result()
         if len(middleresult) != 0:  # 비어있는 middleresult가 [] 1개임
             result += middleresult
         return result  # [이격도]
