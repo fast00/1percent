@@ -19,7 +19,7 @@ for day in range(len(kospibasket)):
     beforemonth = kospibasket[day - 20][0]
     yesterday = kospibasket[day - 1][0]
     todaydate = kospibasket[day][0]
-    stocklist1 = useppo.CheckStrogStock(beforemonth, yesterday, 2)
+    stocklist1 = useppo.CheckStrogStock(beforemonth, yesterday, 4)
     graphdate = str(int(kospibasket[day][0]))
     daypercent = useppo.MackoverlapPPO(day, 5, stocklist1)
     print(todaydate, count)
