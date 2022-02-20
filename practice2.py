@@ -16,7 +16,7 @@ for day in range(len(kospibasket)):
     count += 1
     if day < 500:
         continue
-    beforemonth = kospibasket[day - 30][0]  # 최초는 20일, 30일 86.5 %
+    beforemonth = kospibasket[day - 30][0]  # 최초는 20일, 30일 86.5 % , 28일이 그래프 안정함
     yesterday = kospibasket[day - 1][0]
     todaydate = kospibasket[day][0]
     stocklist1 = useppo.CheckStrogStock(beforemonth, yesterday, 2)
