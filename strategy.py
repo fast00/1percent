@@ -199,7 +199,7 @@ class UsePPO:
             stocklist.append(sortlist[i][0])
         return stocklist
 
-    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
+    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # 83.6 %
         percent = 0
         generalcount = 0
         particularcount = 0
@@ -211,11 +211,8 @@ class UsePPO:
                     if val[j][0] == todaydate and keys in stocklist:
                         newval = [val[i] for i in range(j)]  # 다음날것을 미리 반영해서 확률에 넣어버림 그래서 뺌
                         if len(newval) >= MAdayrange and len(newval) > 300:
-                            if len(newval) % 300 != 0:
-                                newval = [newval[-i] for i in range(1, 301)]
-                                newval.reverse()  # 400일 데이터 기반으로 작동함. 400일씩 이동함
                             stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
-                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
+                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1, len(newval))
                             self.overlapppo[keys] = stockoverlapppolist
                             for i in range(0, MAdayrange):
                                 todaystockbasket.append(val[j - MAdayrange + i + 1])
@@ -234,7 +231,7 @@ class UsePPO:
             if generalcount != 0:
                 try:
                     percent = round(particularcount / generalcount * 100, 2)
-                    print("전체: ", self.generalcount, " 증가: ", self.particularcount, " total: ",
+                    print("오늘 전체: ", generalcount, "오늘 증가: ", particularcount, " total: ",
                           round(self.particularcount / self.generalcount * 100, 1), "%")
                 except ZeroDivisionError:
                     percent = 0
@@ -242,6 +239,50 @@ class UsePPO:
             else:
                 return 1
         return percent
+
+    # def MackoverlapPPO(self, day, MAdayrange, stocklist):  # 83.0 % 이격도 양봉일때 음봉일대 따져보기
+    #     percent = 0
+    #     generalcount = 0
+    #     particularcount = 0
+    #     if day > 300:  # 1년 데이터 축적
+    #         todaydate = self.kospibasket[day][0]
+    #         for keys, val in self.codedaybasket.items():
+    #             todaystockbasket = []
+    #             for j in range(len(val)):
+    #                 if val[j][0] == todaydate and keys in stocklist:
+    #                     newval = [val[i] for i in range(j)]  # 다음날것을 미리 반영해서 확률에 넣어버림 그래서 뺌
+    #                     if len(newval) >= MAdayrange and len(newval) > 300:
+    #                         if len(newval) % 300 != 0:
+    #                             newval = [newval[-i] for i in range(1, 301)]
+    #                             newval.reverse()  # 400일 데이터 기반으로 작동함. 400일씩 이동함
+    #                         stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
+    #                         stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
+    #                         self.overlapppo[keys] = stockoverlapppolist
+    #                         for i in range(0, MAdayrange):
+    #                             todaystockbasket.append(val[j - MAdayrange + i + 1])
+    #                         todayPPO = self.checktoday.MakePPOFromFile(MAdayrange, todaystockbasket)[0]
+    #                         todayresult = self.checktoday.CheckTodayStockFromFile(self.overlapppo[keys], todayPPO)
+    #                         if todayresult == 1:
+    #                             print(todaydate)
+    #                             print(keys)
+    #                             generalcount += 1
+    #                             self.generalcount += 1
+    #                             if todaystockbasket[-1][-1] >= 1:
+    #                                 print(keys, "--")
+    #                                 particularcount += 1
+    #                                 self.particularcount += 1
+    #                     break
+    #         if generalcount != 0:
+    #             try:
+    #                 percent = round(particularcount / generalcount * 100, 2)
+    #                 print("오늘 전체: ", generalcount, "오늘 증가: ", particularcount, " total: ",
+    #                       round(self.particularcount / self.generalcount * 100, 1), "%")
+    #             except ZeroDivisionError:
+    #                 percent = 0
+    #                 print("0%")
+    #         else:
+    #             return 1
+    #     return percent
 
     # def MackoverlapPPO(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
     #     if day > 400:  # 1년 데이터 축적

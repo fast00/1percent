@@ -23,17 +23,19 @@ for day in range(len(kospibasket)):
     graphdate = str(int(kospibasket[day][0]))
     daypercent = useppo.MackoverlapPPO(day, 5, stocklist1)
     print(todaydate, count)
+    if count % 1000 == 0:
+        plt.show()
     if daypercent == 1:
         continue
     graphcount += 1
     daypercentsum += daypercent
     if graphcount % 10 == 0:
         try:
-            daypercent = round(daypercentsum / 10)
+            daypercentsum = daypercentsum / 10
         except ZeroDivisionError:
-            daypercent = 0
+            daypercentsum = 0
         garo.append(graphdate)
-        sero.append(daypercent)
+        sero.append(daypercentsum)
         df = pd.DataFrame({
             'DATE': garo,
             'AMOUNT': sero
@@ -46,10 +48,8 @@ for day in range(len(kospibasket)):
         plt.locator_params(axis='x', nbins=int(len(xlabels) / 10))
         daypercentsum = 0
 
-     # 여기에 할당해서 밑에 대입해야함
     # useoscillator.PositiveOS_Day(day, yesterday, stocklist1)
     # useoscillator.NegativeOS_Day(day, stocklist1)
 
-    if count % 1000 == 0:
-        plt.show()
+
 
