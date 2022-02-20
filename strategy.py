@@ -195,37 +195,34 @@ class UsePPO:
         ##############상찍기 전 3개월정도 확인해보기
         sortlist = sorted(fitcount.items(), key=lambda x: x[1], reverse=True)
         stocklist = []
-        for i in range(0, 20):
+        for i in range(0, 10):
             stocklist.append(sortlist[i][0])
         return stocklist
 
-    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
+    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # 코스닥 500일 - 85.6 % (코스피 600일 83.7 % 유동성이 낮음)
         percent = 0
         generalcount = 0
         particularcount = 0
-        todayresult = 0
-        if day > 300:  # 1년 데이터 축적
+        if day > 500:  # 1년 데이터 축적
             todaydate = self.kospibasket[day][0]
             for keys, val in self.codedaybasket.items():
                 todaystockbasket = []
                 for j in range(len(val)):
                     if val[j][0] == todaydate and keys in stocklist:
                         newval = [val[i] for i in range(j)]  # 다음날것을 미리 반영해서 확률에 넣어버림 그래서 뺌
-                        if len(newval) >= MAdayrange and len(newval) > 300:
-                            if len(newval) % 300 != 0:
-                                newval = [newval[-i] for i in range(1, 301)]
+                        if len(newval) >= MAdayrange and len(newval) > 500:
+                            if len(newval) % 500 != 0:
+                                newval = [newval[-i] for i in range(1, 501)]
                                 newval.reverse()  # 400일 데이터 기반으로 작동함. 400일씩 이동함
                             stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
                             stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
-                            self.overlapppo[keys] = stockoverlapppolist  # 0번째가 양수 1번째가 음수
+                            self.overlapppo[keys] = stockoverlapppolist
                             for i in range(0, MAdayrange):
                                 todaystockbasket.append(val[j - MAdayrange + i + 1])
                             todayPPO = self.checktoday.MakePPOFromFile(MAdayrange, todaystockbasket)[0]
-                            if todayPPO[2] >= 0:
-                                todayresult = self.checktoday.CheckTodayStockFromFile(self.overlapppo[keys][0], todayPPO)
-                            elif todayPPO[2] < 0:
-                                todayresult = self.checktoday.CheckTodayStockFromFile(self.overlapppo[keys][1], todayPPO)
+                            todayresult = self.checktoday.CheckTodayStockFromFile(self.overlapppo[keys], todayPPO)
                             if todayresult == 1:
+                                print(todaydate)
                                 print(keys)
                                 generalcount += 1
                                 self.generalcount += 1
@@ -237,7 +234,7 @@ class UsePPO:
             if generalcount != 0:
                 try:
                     percent = round(particularcount / generalcount * 100, 2)
-                    print("전체: ", generalcount, " 증가: ", particularcount, " total: ",
+                    print("전체: ", self.generalcount,"오늘 전체: ", generalcount, "오늘 증가: ", particularcount, " total: ",
                           round(self.particularcount / self.generalcount * 100, 1), "%")
                 except ZeroDivisionError:
                     percent = 0

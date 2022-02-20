@@ -338,19 +338,19 @@ class Indicators:
                     MA += self.basket[i - k][4]
                 MA = MA / MAdayrange
                 result.append(
-                    [self.basket[i][0], round(MA, 3), self.basket[i][4], self.basket[i][6], self.basket[i][7], self.basket[i][4] - self.basket[i][1]])
+                    [self.basket[i][0], round(MA, 3), self.basket[i][4], self.basket[i][6], self.basket[i][7]])
                 MA = 0
         self.MA = result
-        return result  # [날짜, 평균, 오늘종가, 오늘증감률, 다음날고가증감률, 종가 - 시가(양봉인지 음봉인지 판단)]
+        return result  # [날짜, 평균, 오늘종가, 오늘증감률, 다음날고가증감률]
 
     def MakePPOFromFile(self, MAdayrange, basket):
         self.MakeMAFromFile(MAdayrange, basket)
         result = []
         for i in range(len(self.MA)):
             PPO = self.MA[i][2] / self.MA[i][1] * 100
-            result.append([self.MA[i][0], round(PPO, 3), self.MA[i][3], self.MA[i][4], self.MA[i][5]])
+            result.append([self.MA[i][0], round(PPO, 3), self.MA[i][3], self.MA[i][4]])
         self.PPO = result
-        return result  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률, 종가 - 시가(양봉인지 음봉인지 판단)]
+        return result  # {날짜 : [이격도 , 오늘증감률, 다음날고가증감률]}
 
     def MakeCCI(self, MAdayrange, basket):
         self.basket = basket
@@ -376,12 +376,9 @@ class PPOMethod:
     def __init__(self):
         self.rateofchange = 0
         self.PPOrange = []
-        self.PPOplusrangecount = {}
-        self.PPOplusrangePaticularcount = {}
-        self.PPOplusrangePercent = {}
-        self.PPOminusrangecount = {}
-        self.PPOminusrangePaticularcount = {}
-        self.PPOminusrangePercent = {}
+        self.PPOrangecount = {}
+        self.PPOrangePaticularcount = {}
+        self.PPOrangePercent = {}
         self.daylist = {}
 
     def SortList(self, PPO):
@@ -394,12 +391,9 @@ class PPOMethod:
     def DicInitialize(self, PPO):
         self.PPOrange = self.SortList(PPO)  # [PPO만 리스트에 저장해서 정렬함]
         for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):
-            self.PPOplusrangecount[self.PPOrange[0] + i] = 0
-            self.PPOplusrangePaticularcount[self.PPOrange[0] + i] = 0
-            self.PPOplusrangePercent[self.PPOrange[0] + i] = 0
-            self.PPOminusrangecount[self.PPOrange[0] + i] = 0
-            self.PPOminusrangePaticularcount[self.PPOrange[0] + i] = 0
-            self.PPOminusrangePercent[self.PPOrange[0] + i] = 0
+            self.PPOrangecount[self.PPOrange[0] + i] = 0
+            self.PPOrangePaticularcount[self.PPOrange[0] + i] = 0
+            self.PPOrangePercent[self.PPOrange[0] + i] = 0
             self.daylist[self.PPOrange[0] + i] = []
 
     def DicInitialize_forMarket(self, PPO):
@@ -417,44 +411,28 @@ class PPOMethod:
         self.DicInitialize(PPO)
         for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):
             for k in range(len(PPO)):
-                if PPO[k][4] >= 0:
-                    if self.PPOrange[0] + i <= PPO[k][1] < self.PPOrange[0] + i + 1:
-                        self.PPOplusrangecount[self.PPOrange[0] + i] += 1
-                        self.daylist[self.PPOrange[0] + i] += [PPO[k][0]]
-                        if PPO[k][3] >= increaserate:
-                            self.PPOplusrangePaticularcount[self.PPOrange[0] + i] += 1
-                elif PPO[k][4] < 0:
-                    if self.PPOrange[0] + i <= PPO[k][1] < self.PPOrange[0] + i + 1:
-                        self.PPOminusrangecount[self.PPOrange[0] + i] += 1
-                        self.daylist[self.PPOrange[0] + i] += [PPO[k][0]]
-                        if PPO[k][3] >= increaserate:
-                            self.PPOminusrangePaticularcount[self.PPOrange[0] + i] += 1
+                if self.PPOrange[0] + i <= PPO[k][1] < self.PPOrange[0] + i + 1:
+                    self.PPOrangecount[self.PPOrange[0] + i] += 1
+                    self.daylist[self.PPOrange[0] + i] += [PPO[k][0]]
+                    if PPO[k][3] >= increaserate:
+                        self.PPOrangePaticularcount[self.PPOrange[0] + i] += 1
         for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):  # 최종확률구하기
             try:
-                self.PPOplusrangePercent[self.PPOrange[0] + i] = round(
-                    self.PPOplusrangePaticularcount[self.PPOrange[0] + i] / self.PPOplusrangecount[self.PPOrange[0] + i] * 100,
+                self.PPOrangePercent[self.PPOrange[0] + i] = round(
+                    self.PPOrangePaticularcount[self.PPOrange[0] + i] / self.PPOrangecount[self.PPOrange[0] + i] * 100,
                     2)
             except ZeroDivisionError:
-                self.PPOplusrangePercent[self.PPOrange[0] + i] = 0
-            try:
-                self.PPOminusrangePercent[self.PPOrange[0] + i] = round(
-                    self.PPOminusrangePaticularcount[self.PPOrange[0] + i] / self.PPOminusrangecount[self.PPOrange[0] + i] * 100,
-                    2)
-            except ZeroDivisionError:
-                self.PPOminusrangePercent[self.PPOrange[0] + i] = 0
-        return self.PPOplusrangePercent, self.PPOminusrangePercent
+                self.PPOrangePercent[self.PPOrange[0] + i] = 0
+        return self.PPOrangePercent
 
     def Get_result(self):
-        plusresult = []
-        minusresult = []
+        result = []
         for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):
-            if 2 <= self.PPOplusrangePaticularcount[self.PPOrange[0] + i] <= 9 and \
-                    self.PPOplusrangePercent[self.PPOrange[0] + i] >= 85:
-                plusresult.append(round(self.PPOrange[0] + i, 2))
-            elif 2 <= self.PPOminusrangePaticularcount[self.PPOrange[0] + i] <= 9 and \
-                    self.PPOplusrangePercent[self.PPOrange[0] + i] >= 85:
-                minusresult.append(round(self.PPOrange[0] + i, 2))
-        return plusresult, minusresult  # [이격도, 종가가 얼마나 등락해야하는지]
+            if 2 <= self.PPOrangePaticularcount[self.PPOrange[0] + i] <= 9 and \
+                    self.PPOrangePercent[self.PPOrange[0] + i] >= 85:
+                result.append(round(self.PPOrange[0] + i, 2))
+                # print(self.rateofchange,"\n",round(self.PPOrange[0] + i,2),self.PPOrangePercent[self.PPOrange[0] + i],"\n", self.daylist[self.PPOrange[0] + i])
+        return result  # [이격도, 종가가 얼마나 등락해야하는지]
 
     def Condition_Setting_forMarket(self, PPO, increaserate):
         self.DicInitialize_forMarket(PPO)
@@ -508,7 +486,7 @@ class CheckToday:
                 for k in range(0, MAdayrange):
                     MA += self.basket[i - k][4]
                 MA = MA / MAdayrange
-                result.append([self.basket[i][0], round(MA, 3), self.basket[i][4], self.basket[i][4] - self.basket[i][1]])
+                result.append([self.basket[i][0], round(MA, 3), self.basket[i][4]])
                 MA = 0
         self.MA = result
         return result  # [날짜, 평균, 오늘종가, 오늘증감률, 다음날고가증감률]
@@ -518,9 +496,9 @@ class CheckToday:
         result = []
         for i in range(len(self.MA)):
             PPO = self.MA[i][2] / self.MA[i][1] * 100
-            result.append([self.MA[i][0], round(PPO, 3), self.MA[i][3]])
+            result.append([self.MA[i][0], round(PPO, 3)])
         self.PPO = result
-        return result  # [날짜, 이격도, 오늘 양봉인지 음봉인지]
+        return result  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률]
 
     def CheckTodayStockFromFile(self, middleresult, todayPPO):  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률]
         for i in range(len(middleresult)):
@@ -545,15 +523,13 @@ class TotalResult:
         return result  # [이격도]
 
     def StockOverlapppoListFromFile(self, PPO, increaserate):
-        plusresult = []
-        minusresult = []
+        result = []
         ppomethod = PPOMethod()
         ppomethod.Condition_Setting(PPO, increaserate)
         middleresult = ppomethod.Get_result()
-        if len(middleresult[0]) != 0 and len(middleresult[1]) != 0:  # 비어있는 middleresult가 [] 1개임
-            plusresult += middleresult[0]
-            minusresult += middleresult[1]
-        return plusresult, minusresult  # [이격도]
+        if len(middleresult) != 0:  # 비어있는 middleresult가 [] 1개임
+            result += middleresult
+        return result  # [이격도]
 
 
 class FileMethods:
