@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 
 
-useppo = UsePPO('코스피200!')
+useppo = UsePPO('코스닥150!')
 # useoscillator = UseOSCILLATOR('코스닥150!')
 kospibasket = useppo.kospibasket
 count = 0
@@ -16,7 +16,7 @@ for day in range(len(kospibasket)):
     count += 1
     if day < 500:
         continue
-    beforemonth = kospibasket[day - 20][0]
+    beforemonth = kospibasket[day - 30][0]  # 최초는 20일, 30일 86.5 %
     yesterday = kospibasket[day - 1][0]
     todaydate = kospibasket[day][0]
     stocklist1 = useppo.CheckStrogStock(beforemonth, yesterday, 2)

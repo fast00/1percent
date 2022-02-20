@@ -7,7 +7,7 @@ from main2lib import *
 # 코스피 200 (180)
 # 코스닥 150 (390)
 
-Connect()
+# Connect()
 #
 # marketinfo = MarketInfo('U001')
 # info = marketinfo.GetstockPeriodInfo(3300)
@@ -26,3 +26,12 @@ Connect()
 #     plt.show(block=False)
 #     plt.pause(1)
 #     plt.close()
+xs = []
+ys = []
+for i in range(100):
+    if i % 4 == 0:
+        plt.show()
+    xs.append(i)
+    ys.append(i)
+    plt.plot(xs, ys)
+

@@ -192,14 +192,13 @@ class UsePPO:
                     if val[i][7] >= startpecent:
                         particularcount += 1
                         fitcount[keys] += 1
-        ##############상찍기 전 3개월정도 확인해보기
         sortlist = sorted(fitcount.items(), key=lambda x: x[1], reverse=True)
         stocklist = []
         for i in range(0, 10):
             stocklist.append(sortlist[i][0])
         return stocklist
 
-    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # 코스닥 500일 - 85.6 % (코스피 600일 83.7 % 유동성이 낮음)
+    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # 코스닥 500일기준 - 85.6 % (코스피 600일 83.7 % 유동성이 낮음)
         percent = 0
         generalcount = 0
         particularcount = 0
