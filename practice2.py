@@ -47,7 +47,6 @@ for day in range(len(kospibasket)):
         plt.xticks(ticks=xs, labels=xlabels, rotation=45)
         plt.locator_params(axis='x', nbins=int(len(xlabels) / 10))
         daypercentsum = 0
-
     # useoscillator.PositiveOS_Day(day, yesterday, stocklist1)
     # useoscillator.NegativeOS_Day(day, stocklist1)
 
