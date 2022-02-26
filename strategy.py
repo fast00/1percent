@@ -349,7 +349,7 @@ class UsePPO:
             stocklist.append(sortlist[i][0])
         return stocklist
 
-    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # 코스닥 500일기준 - 85.6 % (코스피 600일 83.7 % 유동성이 낮음)
+    def MackoverlapPPO(self, day, MAdayrange, stocklist):  # 코스닥 500일기준 - 85.6 % , (코스피 600일 83.7 % 유동성이 낮음)
         percent = 0
         generalcount = 0
         particularcount = 0

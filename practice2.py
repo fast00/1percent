@@ -1,4 +1,4 @@
-from strategy import *
+from totallib import *
 from matplotlib import pyplot as plt
 import pandas as pd
 
@@ -21,38 +21,15 @@ for day in range(len(kospibasket)):
     yesterday = kospibasket[day - 1][0]
     todaydate = kospibasket[day][0]
     stocklist = useppo.CheckStrogStock(beforemonth, yesterday, 2)
+    stocklist2 = useppo2.CheckStrogStock(beforemonth, yesterday, 2)
     graphdate = str(int(kospibasket[day][0]))
-    # daypercent = useppo.MackoverlapPPO(day, 5, stocklist)
-    daypercent2 = useppo2.MackoverlapPPO(day, 5, stocklist)
-    # useoscillator.PositiveOS_Day(day, yesterday, stocklist)
-    # useoscillator.NegativeOS_Day(day, stocklist)
-    # if daypercent == 1 or daypercent2 == 1:
-    #     count += 1
-    #     print("아무것도 안함!!!!!!!!!!!",todaydate, count, )
-    # if count % 3299 == 0:
-    #     plt.show()
-    # if daypercent == 1:
-    #     continue
-    # graphcount += 1
-    # daypercentsum += daypercent
-    # if graphcount % 10 == 0:
-    #     try:
-    #         daypercentsum = daypercentsum / 10
-    #     except ZeroDivisionError:
-    #         daypercentsum = 0
-    #     garo.append(graphdate)
-    #     sero.append(daypercentsum)
-    #     df = pd.DataFrame({
-    #         'DATE': garo,
-    #         'AMOUNT': sero
-    #     })
-    #     xs = df['DATE'].to_list()
-    #     xlabels = df['DATE'].apply(lambda x: x[2:]).to_list()
-    #     ys = df['AMOUNT'].to_list()
-    #     plt.plot(xs, ys)
-    #     plt.xticks(ticks=xs, labels=xlabels, rotation=45)
-    #     plt.locator_params(axis='x', nbins=int(len(xlabels) / 10))
-    #     daypercentsum = 0
+    daypercent = useppo.MackoverlapPPO(day, 5, stocklist)
+    daypercent2 = useppo2.MackoverlapPPO(day, 5, stocklist2)
+    if daypercent ==1 and daypercent2 == 1:
+        count+=1
+        print(todaydate, count,useppo.generalcount+useppo2.generalcount, (useppo.particularcount+useppo2.particularcount)/(useppo.generalcount+useppo2.generalcount))
+    # useoscillator.PositiveOS_Day(day, yesterday, stocklist1)
+    # useoscillator.NegativeOS_Day(day, stocklist1)
 
 
 

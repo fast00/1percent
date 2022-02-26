@@ -94,7 +94,7 @@ class Codelist:
         :param cpe_market_kind: 업종
         :return: 코드 리스트
         """
-        generalcodelist = self.g_objCodeMgr.GetStockListByMarket(cpe_market_kind)
+        generalcodelist = self.g_objCodeMgr.GetGroupCodeList(cpe_market_kind)
         particalcodelist = []
         for code in generalcodelist:
             if self.g_objCodeMgr.GetStockSectionKind(code) == 1 and self.g_objCodeMgr.GetStockSupervisionKind(
@@ -431,6 +431,7 @@ class PPOMethod:
             if 2 <= self.PPOrangePaticularcount[self.PPOrange[0] + i] <= 9 and \
                     self.PPOrangePercent[self.PPOrange[0] + i] >= 85:
                 result.append(round(self.PPOrange[0] + i, 2))
+                # print(self.rateofchange,"\n",round(self.PPOrange[0] + i,2),self.PPOrangePercent[self.PPOrange[0] + i],"\n", self.daylist[self.PPOrange[0] + i])
         return result  # [이격도, 종가가 얼마나 등락해야하는지]
 
     def Condition_Setting_forMarket(self, PPO, increaserate):
