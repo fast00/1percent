@@ -511,6 +511,48 @@ class CheckToday:
                 return 1
         return 0
 
+class CheckbitcoinToday:
+    def __init__(self):
+        self.basket = []
+        self.Madayrange = 0
+        self.MA = {}
+        self.PPO = {}
+
+    def MakeMAFromFile(self, MAdayrange, basket):
+        MA = 0
+        result = []
+        self.Madayrange = MAdayrange
+        self.basket = basket
+        for i in range(len(self.basket)):
+            if i >= MAdayrange - 1:
+                for k in range(0, MAdayrange):
+                    MA += self.basket[i - k][4]
+                MA = MA / MAdayrange
+                result.append([self.basket[i][0], round(MA, 3), self.basket[i][4]])
+                MA = 0
+        self.MA = result
+        return result  # [날짜, 평균, 오늘종가, 오늘증감률, 다음날고가증감률]
+
+    def MakePPOFromFile(self, MAdayrange, basket):
+        self.MakeMAFromFile(MAdayrange, basket)
+        result = []
+        for i in range(len(self.MA)):
+            PPO = self.MA[i][2] / self.MA[i][1] * 100
+            result.append([self.MA[i][0], round(PPO, 3)])
+        self.PPO = result
+        return result  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률]
+
+    def CheckTodayStockFromFile(self, middleresult, todayPPO):  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률]
+        for i in range(len(middleresult)):
+            if middleresult[i] <= todayPPO[1] < middleresult[i] + 1:
+                return 1
+        return 0
+
+    def CheckTodayMarketFromFile(self, middleresult, todayPPO):  # [이격도 , 오늘증감률, 고가증감률]
+        for i in range(len(middleresult)):
+            if middleresult[i] <= todayPPO[1] < middleresult[i] + 0.1:
+                return 1
+        return 0
 
 class TotalResult:
 

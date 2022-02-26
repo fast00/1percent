@@ -26,12 +26,50 @@ from main2lib import *
 #     plt.show(block=False)
 #     plt.pause(1)
 #     plt.close()
-xs = []
-ys = []
-for i in range(100):
-    if i % 4 == 0:
-        plt.show()
-    xs.append(i)
-    ys.append(i)
-    plt.plot(xs, ys)
 
+import requests
+from bs4 import BeautifulSoup
+from tqdm import tqdm
+code = []
+for page in range(6,31):
+    url = f"https://finance.naver.com/sise/sise_market_sum.naver?sosok=1&page={page}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        html = response.text
+        soup = BeautifulSoup(html, 'html.parser')
+        tag = soup.find_all("a")
+        volum = soup.find_all("")
+        for i in tag:
+            if "href=\"/item/main.naver?code=" in str(i):
+                code.append("A" + i["href"].strip("href=\"/item/main.naver?code="))
+print(len(code))
+clearcode = []
+Connect()
+g_objCodeMgr = win32com.client.Dispatch("CpUtil.CpCodeMgr")
+objStockChart = win32com.client.Dispatch("CpSysDib.StockChart")
+for i in tqdm(code):
+    objStockChart.SetInputValue(0, str(i))
+    objStockChart.SetInputValue(1, ord('2'))  # 개수로 조회
+    objStockChart.SetInputValue(4, 10)  # 최근 10일 치
+    objStockChart.SetInputValue(5, [8])  # 날짜,시가,고가,저가,종가,거래량
+    objStockChart.SetInputValue(6, ord('D'))  # '차트 주가 - 일간 차트 요청
+    objStockChart.SetInputValue(9, ord('1'))  # 수정주가 사용
+    objStockChart.BlockRequest()
+    GetLimitTime()
+    len = objStockChart.GetHeaderValue(3)
+    volumesum = 0
+    for k in range(len):
+        volume = objStockChart.GetDataValue(0, k)
+        volumesum += volume
+    if g_objCodeMgr.GetStockSectionKind(i) == 1 and volumesum/10 >= 2000000:
+        clearcode.append(i)
+for i in clearcode:
+    marketinfo = MarketInfo(i)
+    basket = marketinfo.GetstockPeriodInfo(2000)
+    f = open(f"C:\\주가정보\\동전주\\{i}.txt", 'w', encoding='utf-8')
+    f.write(str(basket))
+    f.close()
+
+f = open(f"C:\\주가정보\\동전주\\codelist.txt", 'w', encoding='utf-8')
+f.write(str(clearcode))
+f.close()
