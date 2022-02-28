@@ -21,21 +21,29 @@ def Connect():
 
 
 def GetLimitTime():
-    cptime = CpTimeChecker(1).checkRemainTime()
+    cptime = CpTimeChecker(1).checkRemainTime(1)
     if cptime[1] == 1 and cptime[0] != 0:
         while True:
-            if CpTimeChecker(1).checkRemainTime()[0] == 0:
+            if CpTimeChecker(1).checkRemainTime(1)[0] == 0:
                 time.sleep(0.5)
                 break
     return True
 
+def GetaccountLimitTime():
+    cptime = CpTimeChecker(1).checkRemainTime(0)
+    if cptime[1] == 1 and cptime[0] != 0:
+        while True:
+            if CpTimeChecker(1).checkRemainTime(0)[0] == 0:
+                time.sleep(0.5)
+                break
+    return True
 
 class CpTimeChecker:
     def __init__(self, checkType):
         self.g_objCpStatus = win32com.client.Dispatch("CpUtil.CpCybos")
         self.chekcType = checkType  # 0: 주문 관련 1: 시세 요청 관련 2: 실시간 요청 관련
 
-    def checkRemainTime(self):
+    def checkRemainTime(self,numtype):
         # 연속 요청 가능 여부 체크
         remainTime = self.g_objCpStatus.LimitRequestRemainTime
         remainCount = self.g_objCpStatus.GetLimitRemainCount(self.chekcType)  # 시세 제한
@@ -43,7 +51,7 @@ class CpTimeChecker:
             while remainCount <= 0:
                 # pythoncom.PumpWaitingMessages()
                 time.sleep(remainTime / 1000)
-                remainCount = self.g_objCpStatus.GetLimitRemainCount(1)  # 시세 제한
+                remainCount = self.g_objCpStatus.GetLimitRemainCount(numtype)  # 시세 제한
                 remainTime = self.g_objCpStatus.LimitRequestRemainTime  #
                 print(remainCount, remainTime)
             print("시간 지연 !!!!!!!!!!!!!")
@@ -132,6 +140,7 @@ class Account:
             for key,val in nowprice.items():
                 amount = int(distribution / val)
                 if amount != 0:
+                    GetaccountLimitTime()
                     succescode.append(self.buyorder(key, amount, val))
             return succescode
         else:
@@ -152,6 +161,7 @@ class Account:
             price = objRq.GetDataValue(17, i)
             balancelist[code] = [amount, price]  # 코드 : [수량, 단가]
             sellprice = price * 1.1
+            GetaccountLimitTime()
             succeslist.append(self.sellorder(code, amount, sellprice, "01"))
         return succeslist
 
@@ -169,6 +179,7 @@ class Account:
             amount = objRq.GetDataValue(7, i)
             price = objRq.GetDataValue(17, i)
             balancelist[code] = [amount, price]  # 코드 : [수량, 단가]
+            GetaccountLimitTime()
             succeslist.append(self.sellorder(code, amount, price, "03"))
         return succeslist
 
