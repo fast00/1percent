@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 import shutil
 import time
-import numpy as np
+
 
 
 # 코스피 200 (180), 코스피지수 'U001'
@@ -63,6 +63,16 @@ class Account:
             print(self.acc, self.accFlag[0], "계좌 주문 초기화 완료")
         self.objStockOrder = win32com.client.Dispatch("CpTrade.CpTd0311")
 
+    def deposit(self):
+        CpTdNew = win32com.client.Dispatch("CpTrade.CpTdNew5331A")
+        CpTdNew.SetInputValue(0, self.acc)
+        CpTdNew.SetInputValue(1, self.accFlag[0])
+        CpTdNew.SetInputValue(6, ord("1"))
+        CpTdNew.BlockRequest()
+        money = int(CpTdNew.GetHeaderValue(9))
+        print("현재 잔액: ",money)
+        return money
+
     def buyorder(self, code, amount, price):
 
         self.objStockOrder.SetInputValue(0, "2")  # 2: 매수
@@ -72,7 +82,7 @@ class Account:
         self.objStockOrder.SetInputValue(4, amount)  # 매수수량 - 요청 수량으로 변경 필요
         self.objStockOrder.SetInputValue(5, price)  # 주문단가 - 필요한 가격으로 변경 필요
         self.objStockOrder.SetInputValue(7, "0")  # 주문 조건 구분 코드, 0: 기본 1: IOC 2:FOK
-        self.objStockOrder.SetInputValue(8, "01")  # 주문호가 구분코드 - 01: 보통
+        self.objStockOrder.SetInputValue(8, "03")  # 주문호가 구분코드 - 01: 보통 03: 시장가
         nRet = self.objStockOrder.BlockRequest()
         if nRet != 0:
             print("주문요청 오류", nRet)
@@ -84,10 +94,10 @@ class Account:
             print("주문 실패: ", rqStatus, errMsg)
             exit()
         elif nRet == 0 and rqStatus == 0:
-            print(code, "매수 성공")
+            return code
         return True
 
-    def sellorder(self, code, amount, price):
+    def sellorder(self, code, amount, price, selltype):
         self.objStockOrder.SetInputValue(0, "1")  # 2: 매도
         self.objStockOrder.SetInputValue(1, self.acc)  # 계좌번호
         self.objStockOrder.SetInputValue(2, self.accFlag[0])  # 상품구분 - 주식 상품 중 첫번째
@@ -95,7 +105,7 @@ class Account:
         self.objStockOrder.SetInputValue(4, amount)  # 매수수량 - 요청 수량으로 변경 필요
         self.objStockOrder.SetInputValue(5, price)  # 주문단가 - 필요한 가격으로 변경 필요
         self.objStockOrder.SetInputValue(7, "0")  # 주문 조건 구분 코드, 0: 기본 1: IOC 2:FOK
-        self.objStockOrder.SetInputValue(8, "01")  # 주문호가 구분코드 - 01: 보통
+        self.objStockOrder.SetInputValue(8, selltype)  # 주문호가 구분코드 - 01: 보통
         nRet = self.objStockOrder.BlockRequest()
         if nRet != 0:
             print("주문요청 오류", nRet)
@@ -103,39 +113,118 @@ class Account:
             exit()
         rqStatus = self.objStockOrder.GetDibStatus()
         errMsg = self.objStockOrder.GetDibMsg1()
+        # print(nRet,rqStatus,errMsg)
         if rqStatus != 0:
             print("주문 실패: ", rqStatus, errMsg)
             exit()
         elif nRet == 0 and rqStatus == 0:
-            print(code, "매도 성공")
+            return code
         return True
 
-    def deposit(self):
-        CpTdNew = win32com.client.Dispatch("CpTrade.CpTdNew5331A")
-        CpTdNew.SetInputValue(0, self.acc)
-        CpTdNew.SetInputValue(1, self.accFlag[0])
-        CpTdNew.SetInputValue(6, ord("1"))
-        CpTdNew.BlockRequest()
-        money = CpTdNew.GetHeaderValue(9)
-        print(money)
-        return money
+    def buy(self, qospilist, qosdaqlist):
+        codelist = qospilist + qosdaqlist
+        succescode = []
+        if len(codelist) != 0:
+            remain_money = self.deposit()
+            count = len(codelist)
+            distribution = remain_money / count
+            nowprice = MarketInfo().Getnowprice(codelist)
+            for key,val in nowprice.items():
+                amount = int(distribution / val)
+                if amount != 0:
+                    succescode.append(self.buyorder(key, amount, val))
+            return succescode
+        else:
+            return 1
 
+    def firstsell(self):
+        succeslist = []
+        objRq = win32com.client.Dispatch("CpTrade.CpTd6033")
+        objRq.SetInputValue(0, self.acc)  # 계좌번호
+        objRq.SetInputValue(1, self.accFlag[0])  # 상품구분 - 주식 상품 중 첫번째
+        objRq.SetInputValue(2, 50)
+        objRq.BlockRequest()
+        cnt = objRq.GetHeaderValue(7)
+        balancelist = {}
+        for i in range(cnt):
+            code = objRq.GetDataValue(12, i)
+            amount = objRq.GetDataValue(7, i)
+            price = objRq.GetDataValue(17, i)
+            balancelist[code] = [amount, price]  # 코드 : [수량, 단가]
+            sellprice = price * 1.1
+            succeslist.append(self.sellorder(code, amount, sellprice, "01"))
+        return succeslist
 
+    def secondsell(self):
+        succeslist = []
+        objRq = win32com.client.Dispatch("CpTrade.CpTd6033")
+        objRq.SetInputValue(0, self.acc)  # 계좌번호
+        objRq.SetInputValue(1, self.accFlag[0])  # 상품구분 - 주식 상품 중 첫번째
+        objRq.SetInputValue(2, 50)
+        objRq.BlockRequest()
+        cnt = objRq.GetHeaderValue(7)
+        balancelist = {}
+        for i in range(cnt):
+            code = objRq.GetDataValue(12, i)
+            amount = objRq.GetDataValue(7, i)
+            price = objRq.GetDataValue(17, i)
+            balancelist[code] = [amount, price]  # 코드 : [수량, 단가]
+            succeslist.append(self.sellorder(code, amount, price, "03"))
+        return succeslist
+
+    def cancelorder(self):
+        objRq = win32com.client.Dispatch("CpTrade.CpTd5339")
+        objRq.SetInputValue(0, self.acc)
+        objRq.SetInputValue(1, self.accFlag[0])
+        objRq.SetInputValue(4, "0")  # 전체
+        objRq.SetInputValue(5, "1")  # 정렬 기준 - 역순
+        objRq.SetInputValue(6, "0")  # 전체
+        objRq.SetInputValue(7, 20)  # 요청 개수 - 최대 20개
+        objRq.BlockRequest()
+        GetLimitTime()
+        cnt = objRq.GetHeaderValue(5)
+        orderdic = {}
+        for i in range(0, cnt):
+            orderdic[objRq.GetDataValue(1, i)] = objRq.GetDataValue(3, i)
+        objCancel = win32com.client.Dispatch("CpTrade.CpTd0314")
+        for key,val in orderdic.items():
+            objCancel.SetInputValue(1, key)
+            objCancel.SetInputValue(2, self.acc)
+            objCancel.SetInputValue(3, self.accFlag[0])
+            objCancel.SetInputValue(4, val)
+            objCancel.SetInputValue(5, 0)
+            objCancel.BlockRequest()
+            if objCancel.GetDibStatus() != 0:
+                print("통신상태", objCancel.GetDibStatus(), objCancel.GetDibMsg1())
+                return False
+            print("예약주문 취소 ", objCancel.GetDibMsg1())
 class MarketInfo:
     def __init__(self):
         self.objStockChart = win32com.client.Dispatch("CpSysDib.StockChart")
+        self.g_objCodeMgr = win32com.client.Dispatch("CpUtil.CpCodeMgr")
 
-    def Get_Market_Indexlist(self):
+    def Get_Market_Indexlist_fromkrx(self):
         todaydate = datetime.today().strftime("%Y%m%d")
-        qospi = []
-        qosdaq = []
+        qospilist = []
+        qosdaqlist = []
         for ticker in stock.get_index_ticker_list(todaydate):
             if "코스피 200" == stock.get_index_ticker_name(ticker):
                 qospi = stock.get_index_portfolio_deposit_file(ticker)
+                for code in qospi:
+                    qospilist.append("A"+code)
+                break
         for ticker in stock.get_index_ticker_list(todaydate, market='KOSDAQ'):
             if "코스닥 150" == stock.get_index_ticker_name(ticker):
                 qosdaq = stock.get_index_portfolio_deposit_file(ticker)
-        return qospi, qosdaq
+                for code in qosdaq:
+                    qosdaqlist.append("A"+code)
+                break
+        return qospilist, qosdaqlist
+
+    def Get_Market_Indexlist_fromcreon(self):
+        qospilist = list(self.g_objCodeMgr.GetGroupCodeList(180))
+        qosdaqlist = list(self.g_objCodeMgr.GetGroupCodeList(390))
+        return qospilist, qosdaqlist
 
     def GetstockPeriodInfo(self, period, code):  # 3일치를 부르면, 오늘 제외하고 2일치가 옴.
         """
@@ -187,10 +276,27 @@ class MarketInfo:
         self.volume = basket[-1][5]
         self.todaypercent = basket[-1][6]
         self.periodbasket = basket
-        del basket[-1]  # 다음날고가증가율을 포함하기 때문에 마지막날은 없어야함
         return basket  # ["날짜", "시가", "고가", "저가", "오늘종가", "거래량", "오늘증가율", "다음날고가증가율"]
 
+    def Getnowprice(self, codelist):
+        pricedic = {}
+        objRq = win32com.client.Dispatch("CpSysDib.MarketEye")
+        rqField = [0, 4]
+        objRq.SetInputValue(0, rqField)
+        objRq.SetInputValue(1, codelist)
+        objRq.BlockRequest()
+        length = objRq.GetHeaderValue(2)
+        for i in range(length):
+            code = objRq.GetDataValue(0, i)  # 코드
+            price = objRq.GetDataValue(1, i)  # 현재가
+            pricedic[code] = price
+        return pricedic
 
+    def Get_MarketOpentime(self):
+        return self.g_objCodeMgr.GetMarketStartTime()
+
+    def Get_MarketEndtime(self):
+        return self.g_objCodeMgr.GetMarketEndTime()
 
 class PPOMethod:
     def __init__(self):
@@ -250,7 +356,7 @@ class UsePPO:
         self.file = FileMethods()
         self.indicators = Indicators()
         self.codelist = self.file.GetStockList(market)
-        self.kospibasket = self.file.MarketDayList(market)
+        self.marketbasket = self.file.MarketDayList(market)
         self.checktoday = CheckToday()
         self.totalresult = TotalResult()
         self.codedaybasket = {}
@@ -286,48 +392,22 @@ class UsePPO:
         return stocklist
 
     def MackoverlapPPO(self, day, MAdayrange, stocklist):  # 코스닥 500일기준 - 85.6 % , (코스피 600일 83.7 % 유동성이 낮음)
-        percent = 0
-        generalcount = 0
-        particularcount = 0
-        if day > 500:  # 1년 데이터 축적
-            todaydate = self.kospibasket[day][0]
-            for keys, val in self.codedaybasket.items():
-                todaystockbasket = []
-                for j in range(len(val)):
-                    if val[j][0] == todaydate and keys in stocklist:
-                        newval = [val[i] for i in range(j)]  # 다음날것을 미리 반영해서 확률에 넣어버림 그래서 뺌
-                        if len(newval) >= MAdayrange and len(newval) > 500:
-                            if len(newval) % 500 != 0:
-                                newval = [newval[-i] for i in range(1, 501)]
-                                newval.reverse()  # 500일 데이터 기반으로 작동함. 500일씩 이동함
-                            stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
-                            stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
-                            self.overlapppo[keys] = stockoverlapppolist
-                            for i in range(0, MAdayrange):
-                                todaystockbasket.append(val[j - MAdayrange + i + 1])
-                            todayPPO = self.checktoday.MakePPOFromFile(MAdayrange, todaystockbasket)[0]
-                            todayresult = self.checktoday.CheckTodayStockFromFile(self.overlapppo[keys], todayPPO)
-                            if todayresult == 1:
-                                print(keys)
-                                generalcount += 1
-                                self.generalcount += 1
-                                if todaystockbasket[-1][-1] >= 1:
-                                    print(keys, "--")
-                                    particularcount += 1
-                                    self.particularcount += 1
-                        break
-            if generalcount != 0:
-                try:
-                    percent = round(particularcount / generalcount * 100, 2)
-                    print(self.market, "전체: ", self.generalcount, "오늘 전체: ", generalcount, "오늘 증가: ", particularcount,
-                          " total: ",
-                          round(self.particularcount / self.generalcount * 100, 1), "%")
-                except ZeroDivisionError:
-                    percent = 0
-                    print("0%")
-            else:
-                return 1
-        return percent
+        codelist = []
+        todaydate = self.marketbasket[day][0]
+        for keys, val in self.codedaybasket.items():
+            todaystockbasket = []
+            if keys in stocklist and len(val) == 500 and val[-1][0] == todaydate:  # 500로 맞춤
+                newval = [val[i] for i in range(0, 499)]
+                stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
+                stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
+                self.overlapppo[keys] = stockoverlapppolist
+                for i in range(0, MAdayrange):
+                    todaystockbasket.append(val[-MAdayrange + i])
+                todayPPO = self.checktoday.MakePPOFromFile(MAdayrange, todaystockbasket)[0]
+                todayresult = self.checktoday.CheckTodayStockFromFile(self.overlapppo[keys], todayPPO)
+                if todayresult == 1:
+                    codelist.append(keys)
+        return codelist
 
     def MackoverlapPPO2(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
         if day > 500:  # 1년 데이터 축적
@@ -337,7 +417,7 @@ class UsePPO:
             except ZeroDivisionError:
                 print("0%")
                 pass
-            todaydate = self.kospibasket[day][0]
+            todaydate = self.marketbasket[day][0]
             for keys, val in self.codedaybasket.items():
                 todaystockbasket = []
                 for j in range(len(val)):
@@ -576,8 +656,23 @@ class CheckToday:
         return 0
 
 
-class FileMethods:
+class Strategy:
+    def ppostrategy(self, market):
+        codelist = []
+        todaydate = int(datetime.today().strftime("%Y%m%d"))
+        useppo = UsePPO(market)
+        marketbasket = useppo.marketbasket
+        for day in range(len(marketbasket)):
+            if marketbasket[day][0] == todaydate:
+                print(todaydate)
+                beforemonth = marketbasket[day - 30][0]  # 최초는 20일, 30일 86.5 %
+                yesterday = marketbasket[day - 1][0]
+                stocklist = useppo.CheckStrogStock(beforemonth, yesterday, 2)
+                codelist = useppo.MackoverlapPPO(day, 5, stocklist)
+        return codelist
 
+
+class FileMethods:
     def clearfile(self):
         dir_path = "C:\\주가정보\\코스피200"
         if os.path.exists(dir_path):
@@ -589,13 +684,14 @@ class FileMethods:
         os.makedirs("C:\\주가정보\\코스닥150", exist_ok=True)
         return True
 
-    def save_Info(self):
+    def save_Info(self, period):  #90초 걸림
         self.clearfile()
         marketinfo = MarketInfo()
-        qospi = marketinfo.Get_Market_Indexlist()[0]
-        qosdaq = marketinfo.Get_Market_Indexlist()[1]
+        codelist = marketinfo.Get_Market_Indexlist_fromcreon()
+        qospi = codelist[0]
+        qosdaq = codelist[1]
         for code in qospi:
-            basket = marketinfo.GetstockPeriodInfo(505, code)
+            basket = marketinfo.GetstockPeriodInfo(period, code)
             f = open(f"C:\\주가정보\\코스피200\\{code}.txt", 'w', encoding='utf-8')
             f.write(str(basket))
             f.close()
@@ -603,10 +699,10 @@ class FileMethods:
         f.write(str(qospi))
         f.close()
         f = open(f"C:\\주가정보\\코스피200\\코스피200.txt", 'w', encoding='utf-8')
-        f.write(str(marketinfo.GetstockPeriodInfo(505, 'U001')))
+        f.write(str(marketinfo.GetstockPeriodInfo(period, 'U001')))
         f.close()
         for code in qosdaq:
-            basket = marketinfo.GetstockPeriodInfo(505, code)
+            basket = marketinfo.GetstockPeriodInfo(period, code)
             f = open(f"C:\\주가정보\\코스닥150\\{code}.txt", 'w', encoding='utf-8')
             f.write(str(basket))
             f.close()
@@ -614,49 +710,8 @@ class FileMethods:
         f.write(str(qosdaq))
         f.close()
         f = open(f"C:\\주가정보\\코스닥150\\코스닥150.txt", 'w', encoding='utf-8')
-        f.write(str(marketinfo.GetstockPeriodInfo(505, 'U201')))
+        f.write(str(marketinfo.GetstockPeriodInfo(period, 'U201')))
         f.close()
-
-    def GetDaylist(self, filename):
-        codelistinfile = self.GetStockList(filename)
-        kospibasket1 = self.MarketDayList(filename)
-        kospibasket2 = []
-        basket2 = {}
-        remaindaylist = {}
-        kospiremaindaylist = []
-        date = 0
-        for i in range(0, len(kospibasket1)):
-            if i < 720:
-                kospibasket2.append(kospibasket1[i])
-            elif i == 720:
-                date = kospibasket1[i][0]
-                kospiremaindaylist.append(kospibasket1[i])
-            else:
-                kospiremaindaylist.append(kospibasket1[i])
-        for code in codelistinfile:
-            basket1 = self.StockDayList(filename, code)
-            remaindaylist[code] = []
-            basket2[code] = []
-            for i in range(0, len(basket1)):  # 720일까지만 하기 basket2를 이용
-                if basket1[i][0] < date:
-                    basket2[code] += [basket1[i]]
-                elif basket1[i][0] >= date:
-                    remaindaylist[code] += [basket1[i]]
-        return codelistinfile, kospibasket2, basket2, kospiremaindaylist, remaindaylist
-
-    def GetDaylist2(self, filename):
-        codelistinfile = self.GetStockList(filename)
-        kospibasket1 = self.MarketDayList(filename)
-        kospibasket2 = []
-        basket2 = {}
-        for i in range(0, len(kospibasket1)):
-            kospibasket2.append(kospibasket1[i])
-        for code in codelistinfile:
-            basket1 = self.StockDayList(filename, code)
-            basket2[code] = []
-            for i in range(0, len(basket1)):  # 720일까지만 하기 basket2를 이용
-                basket2[code] += [basket1[i]]
-        return codelistinfile, kospibasket2, basket2
 
     def StockDayList(self, filename, code):
         f = open(f"C:\\주가정보\\{filename}\\{code}.txt", 'r', encoding='utf-8')
@@ -692,4 +747,5 @@ class FileMethods:
         txt = f.read()
         txt = txt.replace('[', '').replace(']', '').replace(' ', '').replace('\r', '').replace('\'', '')
         result = txt.split(",")
+        f.close()
         return result

@@ -201,7 +201,7 @@ class MarketInfo:
          """
         self.objStockChart.SetInputValue(0, str(self.code))  # 종목 코드
         self.objStockChart.SetInputValue(1, ord('2'))  # 개수로 조회
-        self.objStockChart.SetInputValue(4, 402)  # 최근 100일 치 1561
+        self.objStockChart.SetInputValue(4, 1561)  # 최근 100일 치 1561
         self.objStockChart.SetInputValue(5, [0, 1, 2, 3, 4, 5, 8])  # 날짜,시간,시가,고가,저가,종가,거래량
         self.objStockChart.SetInputValue(6, ord('m'))  # '차트 주기 - 분/틱
         self.objStockChart.SetInputValue(9, ord('1'))  # 수정주가 사용
@@ -651,4 +651,5 @@ class FileMethods:
         txt = f.read()
         txt = txt.replace('[', '').replace(']', '').replace(' ', '').replace('\r', '').replace('\'', '')
         result = txt.split(",")
+        f.close()
         return result

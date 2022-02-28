@@ -1,7 +1,38 @@
-from totallib import *
+from strategy import *
 from matplotlib import pyplot as plt
 import pandas as pd
-
+def refresh():
+    g_objCodeMgr = win32com.client.Dispatch("CpUtil.CpCodeMgr")
+    generalcodelist = list(g_objCodeMgr.GetGroupCodeList(390))
+    f = open("C:\\주가정보\\코스닥150!\\codelist.txt", 'w', encoding='utf-8')
+    f.write((str(generalcodelist)))
+    f.close()
+    for i in generalcodelist:
+        marketinfo = MarketInfo(i)
+        basket = marketinfo.GetstockPeriodInfo(1000)
+        f = open(f"C:\\주가정보\\코스닥150!\\{i}.txt", 'w', encoding='utf-8')
+        f.write(str(basket))
+        f.close()
+    marketinfo = MarketInfo("U201")
+    basket = marketinfo.GetstockPeriodInfo(1000)
+    f = open("C:\\주가정보\\코스닥150!\\코스닥150!.txt", 'w', encoding='utf-8')
+    f.write((str(basket)))
+    f.close()
+    generalcodelist = list(g_objCodeMgr.GetGroupCodeList(180))
+    f = open("C:\\주가정보\\코스피200!\\codelist.txt", 'w', encoding='utf-8')
+    f.write((str(generalcodelist)))
+    f.close()
+    for i in generalcodelist:
+        marketinfo = MarketInfo(i)
+        basket = marketinfo.GetstockPeriodInfo(1000)
+        f = open(f"C:\\주가정보\\코스피200!\\{i}.txt", 'w', encoding='utf-8')
+        f.write(str(basket))
+        f.close()
+    marketinfo = MarketInfo("U001")
+    basket = marketinfo.GetstockPeriodInfo(1000)
+    f = open("C:\\주가정보\\코스피200!\\코스피200!.txt", 'w', encoding='utf-8')
+    f.write((str(basket)))
+    f.close()
 
 useppo = UsePPO('코스피200!')
 useppo2 = UsePPO('코스닥150!')
@@ -14,7 +45,7 @@ graphcount = 0
 garo = []
 sero = []
 for day in range(len(kospibasket)):
-    if day < 1000:
+    if day < 400:
         continue
     print(day)
     beforemonth = kospibasket[day - 30][0]  # 최초는 20일, 30일 86.5 %
@@ -118,3 +149,72 @@ for day in range(len(kospibasket)):
 #         daypercentsum2 = 0
 #     # useoscillator.PositiveOS_Day(day, yesterday, stocklist1)
 #     # useoscillator.NegativeOS_Day(day, stocklist1)
+
+
+# import os
+# import ast
+# import shutil
+# import matplotlib.pyplot as plt
+#
+# class FileMethods:
+#
+#     def StockDayList(self, filename, code):
+#         f = open(f"C:\\주가정보\\업종\\{filename}\\{code}.txt", 'r', encoding='utf-8')
+#         txt = f.read()
+#         result = self.ChangeDayList(txt)
+#         f.close()
+#         return result
+#
+#     def ChangeDayList(self, txt):
+#         txt = txt.replace('[', '').replace(']', '').replace(' ', '').replace('\r', '')
+#         list1 = txt.split(",")
+#         list2 = []
+#         result = []
+#         count = 0
+#         for i in list1:
+#             count += 1
+#             list2.append(float(i))
+#             if count == 7:
+#                 result.append(list2)
+#                 list2 = []
+#                 count = 0
+#         return result
+#
+#     def GetStockList(self, filename):
+#         f = open(f"C:\\주가정보\\업종\\{filename}\\codelist.txt", 'r', encoding='utf-8')
+#         txt = f.read()
+#         txt = txt.replace('[', '').replace(']', '').replace(' ', '').replace('\r', '').replace('\'', '')
+#         result = txt.split(",")
+#         f.close()
+#         return result
+#
+# filemethode = FileMethods()
+#
+# f = open("C:\\주가정보\\업종\\upjonglist.txt", 'r', encoding='utf-8')
+# txt = f.readline()
+# upjonglist = ast.literal_eval(txt)  #업종
+# f.close()
+#
+#
+# for i in upjonglist:
+#     codelist = filemethode.GetStockList(i)  # 종목
+#     endprice = []
+#     for j in codelist:
+#         basket = filemethode.StockDayList(i,j) # 바스켓
+#         garo = []
+#         sero = []
+#         garolist = []
+#         for k in basket:
+#             if 20220222.0 <= k[0] < 20220223:
+#                 if k[1] % 100 == 0:
+#                     garolist.append(k[1])
+#                 sero.append(k[5])
+#                 garo.append(k[1])
+#         plt.scatter(garo, sero, s=10, color="red")
+#         plt.plot(garo, sero, linestyle="solid", color="red")
+#         plt.xticks(garolist, rotation=45)
+#         plt.show()
+#
+
+
+
