@@ -43,10 +43,10 @@ class CpTimeChecker:
         self.g_objCpStatus = win32com.client.Dispatch("CpUtil.CpCybos")
         self.chekcType = checkType  # 0: 주문 관련 1: 시세 요청 관련 2: 실시간 요청 관련
 
-    def checkRemainTime(self,numtype):
+    def checkRemainTime(self, numtype):
         # 연속 요청 가능 여부 체크
         remainTime = self.g_objCpStatus.LimitRequestRemainTime
-        remainCount = self.g_objCpStatus.GetLimitRemainCount(self.chekcType)  # 시세 제한
+        remainCount = self.g_objCpStatus.GetLimitRemainCount(self.chekcType)  # 1 - 시세 제한 0 - 주문 제한
         if remainCount <= 0:
             while remainCount <= 0:
                 # pythoncom.PumpWaitingMessages()
@@ -407,8 +407,8 @@ class UsePPO:
         todaydate = self.marketbasket[day][0]
         for keys, val in self.codedaybasket.items():
             todaystockbasket = []
-            if keys in stocklist and len(val) == 500 and val[-1][0] == todaydate:  # 500로 맞춤
-                newval = [val[i] for i in range(0, 499)]
+            if keys in stocklist and len(val) == 501 and val[-1][0] == todaydate:  # 500로 맞춤
+                newval = [val[i] for i in range(0, 500)]
                 stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
                 stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
                 self.overlapppo[keys] = stockoverlapppolist

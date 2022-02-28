@@ -17,20 +17,17 @@ def test():
 def textbox(numtype, codelist, deposit):
     token = "5141292184:AAENQEkjsmqVgRWUSS32e3K_LFWeRzbv3xI"
     bot = telepot.Bot(token)
-    codelist = str(codelist)
+    codelist = str(codelist).replace("[", "").replace("]", "")
     deposit = str(deposit)
     if numtype == 0:
-        codelist = codelist.replace("[", "").replace("]", "")
         bot.sendMessage(1886738532, text=codelist + "종목을 매수하였습니다.")
         bot.sendMessage(1886738532, text="잔액: " + deposit)
     if numtype == 1:
         bot.sendMessage(1886738532, text="오늘은 종목이 없습니다.")
         bot.sendMessage(1886738532, text="잔액: " + deposit)
     if numtype == 2:
-        codelist = codelist.replace("[", "").replace("]", "")
         bot.sendMessage(1886738532, text=codelist + "종목매도주문을 넣었습니다.")
     if numtype == 3:
-        codelist = codelist.replace("[", "").replace("]", "")
         bot.sendMessage(1886738532, text=codelist + "종목을 매도하였습니다.")
         bot.sendMessage(1886738532, text="잔액: " + deposit)
 
@@ -38,7 +35,7 @@ def textbox(numtype, codelist, deposit):
 def job1():
     Connect()
     file = FileMethods()
-    file.save_Info(500)
+    file.save_Info(501)
     account = Account()
     strategy = Strategy()
     qospilist = strategy.ppostrategy("코스피200")
