@@ -14,6 +14,7 @@ def test():
     qosdaqlist = strategy.ppostrategy("코스닥150")
     print(qospilist, qosdaqlist)
 
+
 def textbox(numtype, codelist, deposit):
     token = "5141292184:AAENQEkjsmqVgRWUSS32e3K_LFWeRzbv3xI"
     bot = telepot.Bot(token)
@@ -22,14 +23,16 @@ def textbox(numtype, codelist, deposit):
     if numtype == 0:
         bot.sendMessage(1886738532, text=codelist + "종목을 매수하였습니다.")
         bot.sendMessage(1886738532, text="잔액: " + deposit)
-    if numtype == 1:
+    elif numtype == 1:
         bot.sendMessage(1886738532, text="오늘은 종목이 없습니다.")
         bot.sendMessage(1886738532, text="잔액: " + deposit)
-    if numtype == 2:
+    elif numtype == 2:
         bot.sendMessage(1886738532, text=codelist + "종목매도주문을 넣었습니다.")
-    if numtype == 3:
+    elif numtype == 3:
         bot.sendMessage(1886738532, text=codelist + "종목을 매도하였습니다.")
         bot.sendMessage(1886738532, text="잔액: " + deposit)
+    elif numtype == 4:
+        bot.sendMessage(1886738532, text=codelist + "프로그램을 종료해주세요.")
 
 
 def job1():
@@ -65,10 +68,19 @@ def job3():
     textbox(3, todaystock, deposit)
 
 
+def job4():
+    todaystock = []
+    deposit = 0
+    textbox(4, todaystock, deposit)
+
+
 # job1 = schedule.every().day.at("15:12:00").do(job1)
 # job2 = schedule.every().day.at("09:00:00").do(job2)
 # job3 = schedule.every().day.at("11:30:00").do(job3)
+# job4 = schedule.every().day.at("22:00:00").do(job4)
 #
 # while True:
 #     schedule.run_pending()
-test()
+
+# test()
+

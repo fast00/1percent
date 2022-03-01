@@ -384,18 +384,13 @@ class UsePPO:
                 self.codedaybasket[code] += [basket[i]]
 
     def CheckStrogStock(self, startdate, enddate, startpecent):
-        generalcount = 0
-        particularcount = 0
         fitcount = {}
         for keys, val in self.codedaybasket.items():
             fitcount[keys] = 0
         for keys, val in self.codedaybasket.items():
             for i in range(len(val)):
-                if startdate < val[i][0] <= enddate:
-                    generalcount += 1
-                    if val[i][7] >= startpecent:
-                        particularcount += 1
-                        fitcount[keys] += 1
+                if startdate < val[i][0] <= enddate and val[i][7] >= startpecent:
+                    fitcount[keys] += 1
         sortlist = sorted(fitcount.items(), key=lambda x: x[1], reverse=True)
         stocklist = []
         for i in range(0, 10):
