@@ -78,8 +78,28 @@ class Account:
         CpTdNew.SetInputValue(6, ord("1"))
         CpTdNew.BlockRequest()
         money = int(CpTdNew.GetHeaderValue(9))
-        print("현재 잔액: ",money)
+        print("현재 잔액: ", money)
         return money
+
+    def checkstockdeposit(self):
+        stocklist = []
+        amountstockdic = {}
+        objRq = win32com.client.Dispatch("CpTrade.CpTd6033")
+        objRq.SetInputValue(0, self.acc)
+        objRq.SetInputValue(1, self.accFlag[0])
+        objRq.SetInputValue(2, 50)
+        objRq.BlockRequest()
+        cnt = objRq.GetHeaderValue(7)
+        print(cnt)
+        for i in range(cnt):
+            code = objRq.GetDataValue(12, i) #잔고에 있는 종목
+            amount = objRq.GetDataValue(15, i)
+            price = objRq.GetDataValue(17, i)
+            stocklist.append(code)
+            amountstockdic[code] = [amount, price]
+        print(amountstockdic)
+        return stocklist, amountstockdic
+
 
     def buyorder(self, code, amount, price):
 
@@ -133,7 +153,7 @@ class Account:
         codelist = qospilist + qosdaqlist
         succescode = []
         if len(codelist) != 0:
-            remain_money = self.deposit()
+            remain_money = self.deposit() * 0.95
             count = len(codelist)
             distribution = remain_money / count
             nowprice = MarketInfo().Getnowprice(codelist)
@@ -183,6 +203,20 @@ class Account:
             succeslist.append(self.sellorder(code, amount, price, "03"))
         return succeslist
 
+    def hedge(self):
+        token = 0
+        stockdiposit = self.checkstockdeposit()
+        depositcodelist = stockdiposit[0]
+        amountstockdic = stockdiposit[1]
+        marketinfo = MarketInfo()
+        lowpricedic = marketinfo.Getlowprice(depositcodelist)
+        for key, val in lowpricedic:
+            if val <= 10:
+                self.sellorder(key, amountstockdic[key][0], amountstockdic[key][1], "03")
+                token = 1
+        if token == 1:
+            return 4
+
     def cancelorder(self):
         objRq = win32com.client.Dispatch("CpTrade.CpTd5339")
         objRq.SetInputValue(0, self.acc)
@@ -209,10 +243,13 @@ class Account:
                 print("통신상태", objCancel.GetDibStatus(), objCancel.GetDibMsg1())
                 return False
             print("예약주문 취소 ", objCancel.GetDibMsg1())
+
+
 class MarketInfo:
     def __init__(self):
         self.objStockChart = win32com.client.Dispatch("CpSysDib.StockChart")
         self.g_objCodeMgr = win32com.client.Dispatch("CpUtil.CpCodeMgr")
+        self.objRq = win32com.client.Dispatch("CpSysDib.MarketEye")
 
     def Get_Market_Indexlist_fromkrx(self):
         todaydate = datetime.today().strftime("%Y%m%d")
@@ -285,17 +322,34 @@ class MarketInfo:
 
     def Getnowprice(self, codelist):
         pricedic = {}
-        objRq = win32com.client.Dispatch("CpSysDib.MarketEye")
         rqField = [0, 4]
-        objRq.SetInputValue(0, rqField)
-        objRq.SetInputValue(1, codelist)
-        objRq.BlockRequest()
-        length = objRq.GetHeaderValue(2)
+        self.objRq.SetInputValue(0, rqField)
+        self.objRq.SetInputValue(1, codelist)
+        GetLimitTime()
+        self.objRq.BlockRequest()
+        length = self.objRq.GetHeaderValue(2)
         for i in range(length):
-            code = objRq.GetDataValue(0, i)  # 코드
-            price = objRq.GetDataValue(1, i)  # 현재가
+            code = self.objRq.GetDataValue(0, i)  # 코드
+            price = self.objRq.GetDataValue(1, i)  # 현재가
             pricedic[code] = price
         return pricedic
+
+    def Getlowprice(self, codelist):
+        rqField = [0, 7, 23]
+        self.objRq.SetInputValue(0, rqField)
+        self.objRq.SetInputValue(1, codelist)
+        GetLimitTime()
+        self.objRq.BlockRequest()
+        length = self.objRq.GetHeaderValue(2)
+        lowdic = {}
+        for i in range(length):
+            code = self.objRq.GetDataValue(0, i)  # 코드
+            low = self.objRq.GetDataValue(1, i)  # 저가
+            yesterdayclose = self.objRq.GetDataValue(2, i)  # 어제 종가
+            lowpercent = (low - yesterdayclose) / yesterdayclose * 100
+            lowdic[code] = lowpercent
+        return lowdic
+
 
     def Get_MarketOpentime(self):
         return self.g_objCodeMgr.GetMarketStartTime()
@@ -668,14 +722,14 @@ class Strategy:
 
 class FileMethods:
     def clearfile(self):
-        dir_path = "C:\\Users\\82104\\Desktop\\코스피200"
+        dir_path = "C:\\주가정보\\코스피200"
         if os.path.exists(dir_path):
             shutil.rmtree(dir_path)
-        os.makedirs("C:\\Users\\82104\\Desktop\\코스피200", exist_ok=True)
-        dir_path = "C:\\Users\\82104\\Desktop\\코스닥150"
+        os.makedirs("C:\\주가정보\\코스피200", exist_ok=True)
+        dir_path = "C:\\주가정보\\코스닥150"
         if os.path.exists(dir_path):
             shutil.rmtree(dir_path)
-        os.makedirs("C:\\Users\\82104\\Desktop\\코스닥150", exist_ok=True)
+        os.makedirs("C:\\주가정보\\코스닥150", exist_ok=True)
         return True
 
     def save_Info(self, period):  #90초 걸림
@@ -691,13 +745,13 @@ class FileMethods:
             if basket == 1:
                 continue
             clearqospi.append(code)
-            f = open(f"C:\\Users\\82104\\Desktop\\코스피200\\{code}.txt", 'w', encoding='utf-8')
+            f = open(f"C:\\주가정보\\코스피200\\{code}.txt", 'w', encoding='utf-8')
             f.write(str(basket))
             f.close()
-        f = open(f"C:\\Users\\82104\\Desktop\\코스피200\\codelist.txt", 'w', encoding='utf-8')
+        f = open(f"C:\\주가정보\\코스피200\\codelist.txt", 'w', encoding='utf-8')
         f.write(str(clearqospi))
         f.close()
-        f = open(f"C:\\Users\\82104\\Desktop\\코스피200\\코스피200.txt", 'w', encoding='utf-8')
+        f = open(f"C:\\주가정보\\코스피200\\코스피200.txt", 'w', encoding='utf-8')
         f.write(str(marketinfo.GetstockPeriodInfo(period, 'U001')))
         f.close()
         for code in qosdaq:
@@ -705,25 +759,25 @@ class FileMethods:
             if basket == 1:
                 continue
             clearqosdaq.append(code)
-            f = open(f"C:\\Users\\82104\\Desktop\\코스닥150\\{code}.txt", 'w', encoding='utf-8')
+            f = open(f"C:\\주가정보\\코스닥150\\{code}.txt", 'w', encoding='utf-8')
             f.write(str(basket))
             f.close()
-        f = open(f"C:\\Users\\82104\\Desktop\\코스닥150\\codelist.txt", 'w', encoding='utf-8')
+        f = open(f"C:\\주가정보\\코스닥150\\codelist.txt", 'w', encoding='utf-8')
         f.write(str(clearqosdaq))
         f.close()
-        f = open(f"C:\\Users\\82104\\Desktop\\코스닥150\\코스닥150.txt", 'w', encoding='utf-8')
+        f = open(f"C:\\주가정보\\코스닥150\\코스닥150.txt", 'w', encoding='utf-8')
         f.write(str(marketinfo.GetstockPeriodInfo(period, 'U201')))
         f.close()
 
     def StockDayList(self, filename, code):
-        f = open(f"C:\\Users\\82104\\Desktop\\{filename}\\{code}.txt", 'r', encoding='utf-8')
+        f = open(f"C:\\주가정보\\{filename}\\{code}.txt", 'r', encoding='utf-8')
         txt = f.read()
         result = self.ChangeDayList(txt)
         f.close()
         return result
 
     def MarketDayList(self, filename):
-        f = open(f"C:\\Users\\82104\\Desktop\\{filename}\\{filename}.txt", 'r', encoding='utf-8')
+        f = open(f"C:\\주가정보\\{filename}\\{filename}.txt", 'r', encoding='utf-8')
         txt = f.read()
         result = self.ChangeDayList(txt)
         f.close()
@@ -745,7 +799,7 @@ class FileMethods:
         return result
 
     def GetStockList(self, filename):
-        f = open(f"C:\\Users\\82104\\Desktop\\{filename}\\codelist.txt", 'r', encoding='utf-8')
+        f = open(f"C:\\주가정보\\{filename}\\codelist.txt", 'r', encoding='utf-8')
         txt = f.read()
         txt = txt.replace('[', '').replace(']', '').replace(' ', '').replace('\r', '').replace('\'', '')
         result = txt.split(",")
