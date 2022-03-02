@@ -22,22 +22,24 @@ def textbox(numtype, codelist, deposit):
     codelist = str(codelist).replace("[", "").replace("]", "")
     deposit = str(deposit)
     if numtype == 0:
-        bot.sendMessage(1886738532, text="----------------"+todaydate+"---------------")
-        bot.sendMessage(1886738532, text=codelist + "종목을 매수하였습니다.")
-        bot.sendMessage(1886738532, text="잔액: " + deposit)
-    elif numtype == 1:
-        bot.sendMessage(1886738532, text="----------------"+todaydate+"---------------")
+        bot.sendMessage(1886738532, text="----------------" + todaydate + "---------------")
         bot.sendMessage(1886738532, text="오늘은 종목이 없습니다.")
         bot.sendMessage(1886738532, text="잔액: " + deposit)
+    elif numtype == 1:
+        bot.sendMessage(1886738532, text="----------------" + todaydate + "---------------")
+        bot.sendMessage(1886738532, text=codelist + "종목을 매수 하였습니다.")
+        bot.sendMessage(1886738532, text="잔액: " + deposit)
     elif numtype == 2:
-        bot.sendMessage(1886738532, text=codelist + "종목매도주문을 넣었습니다.")
+        bot.sendMessage(1886738532, text=codelist + "종목 매도 주문을 넣었습니다.")
     elif numtype == 3:
-        bot.sendMessage(1886738532, text=codelist + "종목을 매도하였습니다.")
+        bot.sendMessage(1886738532, text=codelist + "종목을 매도 하였습니다.")
         bot.sendMessage(1886738532, text="잔액: " + deposit)
     elif numtype == 4:
         bot.sendMessage(1886738532, text=codelist + "헷지 하였습니다.")
     elif numtype == 5:
         bot.sendMessage(1886738532, text=codelist + "프로그램을 종료해주세요.")
+    elif numtype == 6:
+        bot.sendMessage(1886738532, text=codelist + "오늘 종목이 모두 매도 되었습니다.")
 
 
 def job1():
@@ -50,7 +52,7 @@ def job1():
     qosdaqlist = strategy.ppostrategy("코스닥150")
     todaystock = account.buy(qosdaqlist, qospilist)
     deposit = account.deposit()
-    if todaystock != 1:
+    if todaystock == 1:
         textbox(0, todaystock, deposit)
     else:
         textbox(1, todaystock, deposit)
@@ -72,6 +74,7 @@ def job3():
     deposit = account.deposit()
     textbox(3, todaystock, deposit)
 
+
 def job4():  #30초마다 실행
     todaystock = []
     deposit = 0
@@ -80,21 +83,36 @@ def job4():  #30초마다 실행
     if Hedge == 4:
         textbox(4, todaystock, deposit)
 
+
 def job5():
     todaystock = []
     deposit = 0
     textbox(5, todaystock, deposit)
 
 
-job1()
+def job6():
+    Connect()
+    account = Account()
+    if account.checkstockdeposit() == 6:
+        todaystock = []
+        deposit = 0
+        textbox(6, todaystock, deposit)
 
-# schedule.every().day.at("15:12").do(job1)
-# schedule.every().day.at("09:00").do(job2)
-# schedule.every().day.at("11:30").do(job3)
-# schedule.every().day.at("22:00").do(job4)
-#
-# while True:
-#     schedule.run_pending()
-#
-# test()
+
+schedule.every().day.at("15:14").do(job1)
+schedule.every().day.at("09:00").do(job2)
+schedule.every().day.at("11:30").do(job3)
+schedule.every().day.at("22:00").do(job4)
+
+while True:
+    schedule.run_pending()
+    nowtime = int(datetime.today().strftime("%H%M%S"))
+    if nowtime == 100000:
+        job6()
+    if 90010 <= nowtime <= 112950:
+        job4()
+        time.sleep(5)
+
+
+
 

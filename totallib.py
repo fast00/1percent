@@ -90,15 +90,17 @@ class Account:
         objRq.SetInputValue(2, 50)
         objRq.BlockRequest()
         cnt = objRq.GetHeaderValue(7)
-        print(cnt)
         for i in range(cnt):
             code = objRq.GetDataValue(12, i) #잔고에 있는 종목
             amount = objRq.GetDataValue(15, i)
             price = objRq.GetDataValue(17, i)
             stocklist.append(code)
             amountstockdic[code] = [amount, price]
-        print(amountstockdic)
-        return stocklist, amountstockdic
+        print("현재 잔고에 있는 종목 수:",len(stocklist))
+        if len(stocklist) != 0:
+            return stocklist, amountstockdic
+        else:
+            return 6
 
 
     def buyorder(self, code, amount, price):
@@ -206,16 +208,19 @@ class Account:
     def hedge(self):
         token = 0
         stockdiposit = self.checkstockdeposit()
+        if stockdiposit == 6:
+            return True
         depositcodelist = stockdiposit[0]
         amountstockdic = stockdiposit[1]
         marketinfo = MarketInfo()
         lowpricedic = marketinfo.Getlowprice(depositcodelist)
-        for key, val in lowpricedic:
-            if val <= 10:
+        for key, val in lowpricedic.items():
+            if val <= -10:
                 self.sellorder(key, amountstockdic[key][0], amountstockdic[key][1], "03")
                 token = 1
         if token == 1:
             return 4
+        return True
 
     def cancelorder(self):
         objRq = win32com.client.Dispatch("CpTrade.CpTd5339")
