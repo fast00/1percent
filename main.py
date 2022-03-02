@@ -72,7 +72,7 @@ def job3():
     deposit = account.deposit()
     textbox(3, todaystock, deposit)
     return True
-1
+
 
 def job4():
     todaystock = []

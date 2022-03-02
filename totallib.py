@@ -164,7 +164,7 @@ class Account:
             GetaccountLimitTime()
             succeslist.append(self.sellorder(code, amount, sellprice, "01"))
         return succeslist
-1
+
     def secondsell(self):
         succeslist = []
         objRq = win32com.client.Dispatch("CpTrade.CpTd6033")
