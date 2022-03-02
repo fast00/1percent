@@ -237,7 +237,7 @@ class MarketInfo:
         qosdaqlist = list(self.g_objCodeMgr.GetGroupCodeList(390))
         return qospilist, qosdaqlist
 
-    def GetstockPeriodInfo(self, period, code):  # 3일치를 부르면, 오늘 제외하고 2일치가 옴.
+    def GetstockPeriodInfo(self, period, code):
         """
          일별 ["날짜", "시가", "고가", "저가", "오늘종가", "오늘증가율", "고가증가율"]
          :param code, period: 코드, 기간(일)
@@ -245,7 +245,7 @@ class MarketInfo:
          """
         self.objStockChart.SetInputValue(0, str(code))  # 종목 코드
         self.objStockChart.SetInputValue(1, ord('2'))  # 개수로 조회
-        self.objStockChart.SetInputValue(4, period + 1)  # 최근 100일 치
+        self.objStockChart.SetInputValue(4, period + 1)  # 1일치가 계산하면서 삭제됨
         self.objStockChart.SetInputValue(5, [0, 2, 3, 4, 5, 8])  # 날짜,시가,고가,저가,종가,거래량
         self.objStockChart.SetInputValue(6, ord('D'))  # '차트 주가 - 일간 차트 요청
         self.objStockChart.SetInputValue(9, ord('1'))  # 수정주가 사용
@@ -278,15 +278,9 @@ class MarketInfo:
                     except ZeroDivisionError:
                         nextdayhighpercent = 0
                     basket[i] = basket[i] + [nextdayhighpercent]
+                elif i == len(basket) - 1:
+                    basket[i] = basket[i] + [0]
         del basket[0]
-        self.todaydate = basket[-1][0]
-        self.todaystartprice = basket[-1][1]
-        self.todayhighprice = basket[-1][2]
-        self.todaylowprice = basket[-1][3]
-        self.todaycloseprice = basket[-1][4]
-        self.volume = basket[-1][5]
-        self.todaypercent = basket[-1][6]
-        self.periodbasket = basket
         return basket  # ["날짜", "시가", "고가", "저가", "오늘종가", "거래량", "오늘증가율", "다음날고가증가율"]
 
     def Getnowprice(self, codelist):
@@ -638,7 +632,7 @@ class CheckToday:
                 result.append([self.basket[i][0], round(MA, 3), self.basket[i][4]])
                 MA = 0
         self.MA = result
-        return result  # [날짜, 평균, 오늘종가, 오늘증감률, 다음날고가증감률]
+        return result  # [날짜, 평균, 오늘종가]
 
     def MakePPOFromFile(self, MAdayrange, basket):
         self.MakeMAFromFile(MAdayrange, basket)
@@ -647,17 +641,11 @@ class CheckToday:
             PPO = self.MA[i][2] / self.MA[i][1] * 100
             result.append([self.MA[i][0], round(PPO, 3)])
         self.PPO = result
-        return result  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률]
+        return result  # [날짜, 이격도]
 
     def CheckTodayStockFromFile(self, middleresult, todayPPO):  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률]
         for i in range(len(middleresult)):
             if middleresult[i] <= todayPPO[1] < middleresult[i] + 1:
-                return 1
-        return 0
-
-    def CheckTodayMarketFromFile(self, middleresult, todayPPO):  # [이격도 , 오늘증감률, 고가증감률]
-        for i in range(len(middleresult)):
-            if middleresult[i] <= todayPPO[1] < middleresult[i] + 0.1:
                 return 1
         return 0
 
@@ -696,24 +684,32 @@ class FileMethods:
         codelist = marketinfo.Get_Market_Indexlist_fromcreon()
         qospi = codelist[0]
         qosdaq = codelist[1]
+        clearqospi = []
+        clearqosdaq = []
         for code in qospi:
             basket = marketinfo.GetstockPeriodInfo(period, code)
+            if basket == 1:
+                continue
+            clearqospi.append(code)
             f = open(f"C:\\주가정보\\코스피200\\{code}.txt", 'w', encoding='utf-8')
             f.write(str(basket))
             f.close()
         f = open(f"C:\\주가정보\\코스피200\\codelist.txt", 'w', encoding='utf-8')
-        f.write(str(qospi))
+        f.write(str(clearqospi))
         f.close()
         f = open(f"C:\\주가정보\\코스피200\\코스피200.txt", 'w', encoding='utf-8')
         f.write(str(marketinfo.GetstockPeriodInfo(period, 'U001')))
         f.close()
         for code in qosdaq:
             basket = marketinfo.GetstockPeriodInfo(period, code)
+            if basket == 1:
+                continue
+            clearqosdaq.append(code)
             f = open(f"C:\\주가정보\\코스닥150\\{code}.txt", 'w', encoding='utf-8')
             f.write(str(basket))
             f.close()
         f = open(f"C:\\주가정보\\코스닥150\\codelist.txt", 'w', encoding='utf-8')
-        f.write(str(qosdaq))
+        f.write(str(clearqosdaq))
         f.close()
         f = open(f"C:\\주가정보\\코스닥150\\코스닥150.txt", 'w', encoding='utf-8')
         f.write(str(marketinfo.GetstockPeriodInfo(period, 'U201')))

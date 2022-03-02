@@ -8,7 +8,7 @@ import time
 def test():
     Connect()
     file = FileMethods()
-    file.save_Info(500)
+    file.save_Info(501)
     strategy = Strategy()
     qospilist = strategy.ppostrategy("코스피200")
     qosdaqlist = strategy.ppostrategy("코스닥150")
@@ -74,13 +74,15 @@ def job4():
     textbox(4, todaystock, deposit)
 
 
-# job1 = schedule.every().day.at("15:12:00").do(job1)
-# job2 = schedule.every().day.at("09:00:00").do(job2)
-# job3 = schedule.every().day.at("11:30:00").do(job3)
-# job4 = schedule.every().day.at("22:00:00").do(job4)
+job1()
+
+# schedule.every().day.at("15:12").do(job1)
+# schedule.every().day.at("09:00").do(job2)
+# schedule.every().day.at("11:30").do(job3)
+# schedule.every().day.at("22:00").do(job4)
 #
 # while True:
 #     schedule.run_pending()
-
+#
 # test()
 
