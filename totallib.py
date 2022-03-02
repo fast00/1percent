@@ -142,10 +142,9 @@ class Account:
                 if amount != 0:
                     GetaccountLimitTime()
                     succescode.append(self.buyorder(key, amount, val))
-            print(succescode, "를 매수하였습니다.")
             return succescode
         else:
-            return 0
+            return 1
 
     def firstsell(self):
         succeslist = []
@@ -161,7 +160,7 @@ class Account:
             amount = objRq.GetDataValue(7, i)
             price = objRq.GetDataValue(17, i)
             balancelist[code] = [amount, price]  # 코드 : [수량, 단가]
-            sellprice = price * 1.01
+            sellprice = int(price * 1.01)
             GetaccountLimitTime()
             succeslist.append(self.sellorder(code, amount, sellprice, "01"))
         return succeslist
@@ -710,7 +709,7 @@ class FileMethods:
             f.write(str(basket))
             f.close()
         f = open(f"C:\\Users\\82104\\Desktop\\코스닥150\\codelist.txt", 'w', encoding='utf-8')
-        f.write(str(clearqospi))
+        f.write(str(clearqosdaq))
         f.close()
         f = open(f"C:\\Users\\82104\\Desktop\\코스닥150\\코스닥150.txt", 'w', encoding='utf-8')
         f.write(str(marketinfo.GetstockPeriodInfo(period, 'U201')))
