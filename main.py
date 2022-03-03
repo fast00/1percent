@@ -15,11 +15,10 @@ def test():
     print(qospilist, qosdaqlist)
 
 
-def textbox(numtype, codelist, deposit):
+def textbox(numtype, msg, deposit):
     todaydate = str(datetime.today().strftime("%Y%m%d"))
     token = "5141292184:AAENQEkjsmqVgRWUSS32e3K_LFWeRzbv3xI"
     bot = telepot.Bot(token)
-    codelist = str(codelist).replace("[", "").replace("]", "")
     deposit = str(deposit)
     if numtype == 0:
         bot.sendMessage(1886738532, text="----------------" + todaydate + "---------------")
@@ -27,19 +26,20 @@ def textbox(numtype, codelist, deposit):
         bot.sendMessage(1886738532, text="잔액: " + deposit)
     elif numtype == 1:
         bot.sendMessage(1886738532, text="----------------" + todaydate + "---------------")
-        bot.sendMessage(1886738532, text=codelist + "종목을 매수 하였습니다.")
+        for i in msg:
+            bot.sendMessage(1886738532, text=i)
         bot.sendMessage(1886738532, text="잔액: " + deposit)
     elif numtype == 2:
-        bot.sendMessage(1886738532, text=codelist + "종목 매도 주문을 넣었습니다.")
+        bot.sendMessage(1886738532, text=msg)
     elif numtype == 3:
-        bot.sendMessage(1886738532, text=codelist + "종목을 매도 하였습니다.")
+        for i in msg:
+            bot.sendMessage(1886738532, text=i)
         bot.sendMessage(1886738532, text="잔액: " + deposit)
     elif numtype == 4:
-        bot.sendMessage(1886738532, text=codelist + "헷지 하였습니다.")
+        bot.sendMessage(1886738532, text=msg + "헷지 하였습니다.")
     elif numtype == 5:
-        bot.sendMessage(1886738532, text=codelist + "프로그램을 종료해주세요.")
-    elif numtype == 6:
-        bot.sendMessage(1886738532, text=codelist + "오늘 종목이 모두 매도 되었습니다.")
+        bot.sendMessage(1886738532, text="프로그램을 종료해주세요.")
+
 
 
 def job1():
@@ -50,38 +50,37 @@ def job1():
     strategy = Strategy()
     qospilist = strategy.ppostrategy("코스피200")
     qosdaqlist = strategy.ppostrategy("코스닥150")
-    todaystock = account.buy(qosdaqlist, qospilist)
+    msg = account.buy(qosdaqlist, qospilist)
+    stockdeposit = account.stockdeposit()
     deposit = account.deposit()
-    if todaystock == 1:
-        textbox(0, todaystock, deposit)
+    if msg == 1:
+        textbox(0, msg, deposit)
     else:
-        textbox(1, todaystock, deposit)
+        textbox(1, msg, deposit)
+    if len(stockdeposit[1]) != 0:
+        for key, val in stockdeposit[1].items():
+            upprice = int(val[1] * 1.01)
+            msg = account.reservation_sellorder(key, val[0], upprice)
+            textbox(2, msg, deposit)
+    return True
 
 
-def job2():
+def job3():   # 전 주문 취소
     Connect()
     account = Account()
-    todaystock = account.firstsell()  # 9:00시에 매도주문 걸어놓기
+    account.reservation_cencelorder()
+    msg = account.secondsell()
     deposit = account.deposit()
-    textbox(2, todaystock, deposit)
-
-
-def job3():
-    Connect()
-    account = Account()
-    account.cancelorder()  # 전 주문 취소
-    todaystock = account.secondsell()
-    deposit = account.deposit()
-    textbox(3, todaystock, deposit)
+    textbox(3, msg, deposit)
 
 
 def job4():  #30초마다 실행
-    todaystock = []
+    Connect()
     deposit = 0
     account = Account()
     Hedge = account.hedge()
-    if Hedge == 4:
-        textbox(4, todaystock, deposit)
+    if Hedge[0] == 4:
+        textbox(4, Hedge[1], deposit)
 
 
 def job5():
@@ -90,26 +89,14 @@ def job5():
     textbox(5, todaystock, deposit)
 
 
-def job6():
-    Connect()
-    account = Account()
-    if account.checkstockdeposit() == 6:
-        todaystock = []
-        deposit = 0
-        textbox(6, todaystock, deposit)
-
-
 schedule.every().day.at("15:14").do(job1)
-schedule.every().day.at("09:00").do(job2)
 schedule.every().day.at("11:30").do(job3)
-schedule.every().day.at("22:00").do(job4)
+schedule.every().day.at("22:00").do(job5)
 
 while True:
     schedule.run_pending()
     nowtime = int(datetime.today().strftime("%H%M%S"))
-    if nowtime == 100000:
-        job6()
-    if 90010 <= nowtime <= 112950:
+    if nowtime <= 85910 or 90010 <= nowtime <= 112920:
         job4()
         time.sleep(5)
 

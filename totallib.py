@@ -6,7 +6,6 @@ import shutil
 import time
 
 
-
 # 코스피 200 (180), 코스피지수 'U001'
 # 코스닥 150 (390), 코스닥지수 'U201'
 
@@ -29,6 +28,7 @@ def GetLimitTime():
                 break
     return True
 
+
 def GetaccountLimitTime():
     cptime = CpTimeChecker(1).checkRemainTime(0)
     if cptime[1] == 1 and cptime[0] != 0:
@@ -37,6 +37,7 @@ def GetaccountLimitTime():
                 time.sleep(0.5)
                 break
     return True
+
 
 class CpTimeChecker:
     def __init__(self, checkType):
@@ -70,6 +71,7 @@ class Account:
             self.accFlag = self.objTrade.GoodsList(self.acc, 1)
             print(self.acc, self.accFlag[0], "계좌 주문 초기화 완료")
         self.objStockOrder = win32com.client.Dispatch("CpTrade.CpTd0311")
+        self.objCancel = win32com.client.Dispatch("CpTrade.CpTdNew9064")
 
     def deposit(self):
         CpTdNew = win32com.client.Dispatch("CpTrade.CpTdNew5331A")
@@ -81,7 +83,7 @@ class Account:
         print("현재 잔액: ", money)
         return money
 
-    def checkstockdeposit(self):
+    def stockdeposit(self):
         stocklist = []
         amountstockdic = {}
         objRq = win32com.client.Dispatch("CpTrade.CpTd6033")
@@ -91,41 +93,84 @@ class Account:
         objRq.BlockRequest()
         cnt = objRq.GetHeaderValue(7)
         for i in range(cnt):
-            code = objRq.GetDataValue(12, i) #잔고에 있는 종목
+            code = objRq.GetDataValue(12, i)  # 잔고에 있는 종목
             amount = objRq.GetDataValue(15, i)
             price = objRq.GetDataValue(17, i)
             stocklist.append(code)
             amountstockdic[code] = [amount, price]
-        print("현재 잔고에 있는 종목 수:",len(stocklist))
+        print("현재 잔고에 있는 종목 수:", len(stocklist))
         if len(stocklist) != 0:
             return stocklist, amountstockdic
         else:
             return 6
 
-
-    def buyorder(self, code, amount, price):
-
+    def buyorder(self, code, amount):
         self.objStockOrder.SetInputValue(0, "2")  # 2: 매수
         self.objStockOrder.SetInputValue(1, self.acc)  # 계좌번호
         self.objStockOrder.SetInputValue(2, self.accFlag[0])  # 상품구분 - 주식 상품 중 첫번째
         self.objStockOrder.SetInputValue(3, code)  # 종목코드 - 필요한 종목으로 변경 필요
         self.objStockOrder.SetInputValue(4, amount)  # 매수수량 - 요청 수량으로 변경 필요
-        self.objStockOrder.SetInputValue(5, price)  # 주문단가 - 필요한 가격으로 변경 필요
         self.objStockOrder.SetInputValue(7, "0")  # 주문 조건 구분 코드, 0: 기본 1: IOC 2:FOK
         self.objStockOrder.SetInputValue(8, "03")  # 주문호가 구분코드 - 01: 보통 03: 시장가
         nRet = self.objStockOrder.BlockRequest()
-        if nRet != 0:
-            print("주문요청 오류", nRet)
-            # 0: 정상,  그 외 오류, 4: 주문요청제한 개수 초과
-            exit()
         rqStatus = self.objStockOrder.GetDibStatus()
         errMsg = self.objStockOrder.GetDibMsg1()
-        if rqStatus != 0:
-            print("주문 실패: ", rqStatus, errMsg)
-            exit()
-        elif nRet == 0 and rqStatus == 0:
-            return code
+        if nRet == 0 and rqStatus == 0:
+            return str(code + " - " + errMsg)
+        return str(code + " - " + errMsg)
+
+    def reservation_sellorder(self, code, amount, price):
+        orderumdic = {}
+        objStockOrder = win32com.client.Dispatch("CpTrade.CpTdNew9061")
+        objStockOrder.SetInputValue(0, self.acc)  # 2: 매도
+        objStockOrder.SetInputValue(1, self.accFlag[0])  # 계좌번호
+        objStockOrder.SetInputValue(2, "1")  # 상품구분 - 주식 상품 중 첫번째
+        objStockOrder.SetInputValue(3, code)  # 종목코드 - 필요한 종목으로 변경 필요
+        objStockOrder.SetInputValue(4, amount)  # 매수수량 - 요청 수량으로 변경 필요
+        objStockOrder.SetInputValue(5, "01")  # 주문단가 - 필요한 가격으로 변경 필요
+        objStockOrder.SetInputValue(6, price)  # 주문 조건 구분 코드, 0: 기본 1: IOC 2:FOK
+        nRet = objStockOrder.BlockRequest()
+        rqStatus = self.objStockOrder.GetDibStatus()
+        errMsg = self.objStockOrder.GetDibMsg1()
+        if nRet == 0 and rqStatus == 0:
+            return str(code + " - " + errMsg)
+        orderumdic[objStockOrder.GetHeaderValue(0)] = objStockOrder.GetHeaderValue(5)  # 예약번호 : 주문수량
+        return str(code + " - " + errMsg)
+
+    def reservation_cencelorder(self):
+        objResult = win32com.client.Dispatch("CpTrade.CpTd9065")
+        objResult.SetInputValue(0, self.acc)
+        objResult.SetInputValue(1, self.accFlag[0])
+        objResult.SetInputValue(2, 20)
+        while True:  # 연속 조회로 전체 예약 주문 가져온다.
+            objResult.BlockRequest()
+            nRet = objResult.BlockRequest()
+            rqStatus = objResult.GetDibStatus()
+            errMsg = objResult.GetDibMsg1()
+            if nRet != 0 or rqStatus != 0:
+                return errMsg
+            cnt = objResult.GetHeaderValue(4)
+            if cnt == 0:
+                break
+            for i in range(cnt):
+                code = objResult.GetDataValue(2, i)  # 코드
+                ordernum = objResult.GetDataValue(6, i)  # 예약번호
+                self.reservation_cencel(code, ordernum)
+            if objResult.Continue == False:
+                break
         return True
+
+    def reservation_cencel(self, code, ordernum):
+        self.objCancel.SetInputValue(0, ordernum)
+        self.objCancel.SetInputValue(1, self.acc)
+        self.objCancel.SetInputValue(2, self.accFlag[0])
+        self.objCancel.SetInputValue(3, code)
+        nRet = self.objCancel.BlockRequest()
+        rqStatus = self.objCancel.GetDibStatus()
+        errMsg = self.objCancel.GetDibMsg1()
+        if nRet != 0 or rqStatus != 0:
+            return errMsg
+        return self.objCancel.GetDibMsg1()
 
     def sellorder(self, code, amount, price, selltype):
         self.objStockOrder.SetInputValue(0, "1")  # 2: 매도
@@ -137,33 +182,35 @@ class Account:
         self.objStockOrder.SetInputValue(7, "0")  # 주문 조건 구분 코드, 0: 기본 1: IOC 2:FOK
         self.objStockOrder.SetInputValue(8, selltype)  # 주문호가 구분코드 - 01: 보통
         nRet = self.objStockOrder.BlockRequest()
-        if nRet != 0:
-            print("주문요청 오류", nRet)
-            # 0: 정상,  그 외 오류, 4: 주문요청제한 개수 초과
-            exit()
         rqStatus = self.objStockOrder.GetDibStatus()
         errMsg = self.objStockOrder.GetDibMsg1()
-        # print(nRet,rqStatus,errMsg)
-        if rqStatus != 0:
-            print("주문 실패: ", rqStatus, errMsg)
-            exit()
-        elif nRet == 0 and rqStatus == 0:
-            return code
-        return True
+        if nRet == 0 and rqStatus == 0:
+            return str(code + " - " + errMsg)
+        return str(code + " - " + errMsg)
 
     def buy(self, qospilist, qosdaqlist):
         codelist = qospilist + qosdaqlist
         succescode = []
         if len(codelist) != 0:
-            remain_money = self.deposit() * 0.95
+            deposit = self.deposit()
+            hedge = deposit * 0.05
+            investment = deposit - hedge
             count = len(codelist)
-            distribution = remain_money / count
+            distribution = investment / count
             nowprice = MarketInfo().Getnowprice(codelist)
-            for key,val in nowprice.items():
+            for key, val in nowprice.items():
                 amount = int(distribution / val)
                 if amount != 0:
                     GetaccountLimitTime()
-                    succescode.append(self.buyorder(key, amount, val))
+                    succescode.append(self.buyorder(key, amount))
+            deposit = self.deposit()
+            investment = deposit - hedge
+            nowprice2 = MarketInfo().Getnowprice(codelist)
+            for key, val in nowprice2.items():
+                amount = int(investment / val)
+                if amount != 0:
+                    GetaccountLimitTime()
+                    succescode.append("(추가 매수)" + self.buyorder(key, amount))
             return succescode
         else:
             return 1
@@ -184,7 +231,7 @@ class Account:
             balancelist[code] = [amount, price]  # 코드 : [수량, 단가]
             sellprice = int(price * 1.01)
             GetaccountLimitTime()
-            succeslist.append(self.sellorder(code, amount, sellprice, "01"))
+            succeslist.append(self.reservation_sellorder(code, amount, sellprice))
         return succeslist
 
     def secondsell(self):
@@ -207,7 +254,8 @@ class Account:
 
     def hedge(self):
         token = 0
-        stockdiposit = self.checkstockdeposit()
+        hedgelist = []
+        stockdiposit = self.stockdeposit()
         if stockdiposit == 6:
             return True
         depositcodelist = stockdiposit[0]
@@ -219,8 +267,8 @@ class Account:
                 self.sellorder(key, amountstockdic[key][0], amountstockdic[key][1], "03")
                 token = 1
         if token == 1:
-            return 4
-        return True
+            return 4, hedgelist
+        return 1, 1
 
     def cancelorder(self):
         objRq = win32com.client.Dispatch("CpTrade.CpTd5339")
@@ -237,7 +285,7 @@ class Account:
         for i in range(0, cnt):
             orderdic[objRq.GetDataValue(1, i)] = objRq.GetDataValue(3, i)
         objCancel = win32com.client.Dispatch("CpTrade.CpTd0314")
-        for key,val in orderdic.items():
+        for key, val in orderdic.items():
             objCancel.SetInputValue(1, key)
             objCancel.SetInputValue(2, self.acc)
             objCancel.SetInputValue(3, self.accFlag[0])
@@ -264,13 +312,13 @@ class MarketInfo:
             if "코스피 200" == stock.get_index_ticker_name(ticker):
                 qospi = stock.get_index_portfolio_deposit_file(ticker)
                 for code in qospi:
-                    qospilist.append("A"+code)
+                    qospilist.append("A" + code)
                 break
         for ticker in stock.get_index_ticker_list(todaydate, market='KOSDAQ'):
             if "코스닥 150" == stock.get_index_ticker_name(ticker):
                 qosdaq = stock.get_index_portfolio_deposit_file(ticker)
                 for code in qosdaq:
-                    qosdaqlist.append("A"+code)
+                    qosdaqlist.append("A" + code)
                 break
         return qospilist, qosdaqlist
 
@@ -355,12 +403,12 @@ class MarketInfo:
             lowdic[code] = lowpercent
         return lowdic
 
-
     def Get_MarketOpentime(self):
         return self.g_objCodeMgr.GetMarketStartTime()
 
     def Get_MarketEndtime(self):
         return self.g_objCodeMgr.GetMarketEndTime()
+
 
 class PPOMethod:
     def __init__(self):
@@ -737,7 +785,7 @@ class FileMethods:
         os.makedirs("C:\\주가정보\\코스닥150", exist_ok=True)
         return True
 
-    def save_Info(self, period):  #90초 걸림
+    def save_Info(self, period):  # 90초 걸림
         self.clearfile()
         marketinfo = MarketInfo()
         codelist = marketinfo.Get_Market_Indexlist_fromcreon()
