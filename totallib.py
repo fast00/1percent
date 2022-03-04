@@ -102,16 +102,17 @@ class Account:
         if len(stocklist) != 0:
             return stocklist, amountstockdic
         else:
-            return 6
+            return 6, amountstockdic
 
-    def buyorder(self, code, amount):
+    def buyorder(self, code, amount, price):
         self.objStockOrder.SetInputValue(0, "2")  # 2: 매수
         self.objStockOrder.SetInputValue(1, self.acc)  # 계좌번호
         self.objStockOrder.SetInputValue(2, self.accFlag[0])  # 상품구분 - 주식 상품 중 첫번째
         self.objStockOrder.SetInputValue(3, code)  # 종목코드 - 필요한 종목으로 변경 필요
-        self.objStockOrder.SetInputValue(4, amount)  # 매수수량 - 요청 수량으로 변경 필요
+        self.objStockOrder.SetInputValue(4, amount)
+        self.objStockOrder.SetInputValue(5, price)
         self.objStockOrder.SetInputValue(7, "0")  # 주문 조건 구분 코드, 0: 기본 1: IOC 2:FOK
-        self.objStockOrder.SetInputValue(8, "03")  # 주문호가 구분코드 - 01: 보통 03: 시장가
+        self.objStockOrder.SetInputValue(8, "01")  # 주문호가 구분코드 - 01: 보통 03: 시장가
         nRet = self.objStockOrder.BlockRequest()
         rqStatus = self.objStockOrder.GetDibStatus()
         errMsg = self.objStockOrder.GetDibMsg1()
@@ -199,18 +200,18 @@ class Account:
             distribution = investment / count
             nowprice = MarketInfo().Getnowprice(codelist)
             for key, val in nowprice.items():
-                amount = int(distribution / val)
+                amount = int(distribution / val * 0.05)
                 if amount != 0:
                     GetaccountLimitTime()
-                    succescode.append(self.buyorder(key, amount))
+                    succescode.append(self.buyorder(key, amount, val * 0.05))
             deposit = self.deposit()
             investment = deposit - hedge
             nowprice2 = MarketInfo().Getnowprice(codelist)
             for key, val in nowprice2.items():
-                amount = int(investment / val)
+                amount = int(investment / val * 0.05)
                 if amount != 0:
                     GetaccountLimitTime()
-                    succescode.append("(추가 매수)" + self.buyorder(key, amount))
+                    succescode.append("(추가 매수)" + self.buyorder(key, amount, val * 0.05))
             return succescode
         else:
             return 1
@@ -254,7 +255,7 @@ class Account:
 
     def hedge(self):
         token = 0
-        hedgelist = []
+        hegemsg = []
         stockdiposit = self.stockdeposit()
         if stockdiposit == 6:
             return True
@@ -263,11 +264,11 @@ class Account:
         marketinfo = MarketInfo()
         lowpricedic = marketinfo.Getlowprice(depositcodelist)
         for key, val in lowpricedic.items():
-            if val <= -10:
-                self.sellorder(key, amountstockdic[key][0], amountstockdic[key][1], "03")
+            if val <= -11:
+                hegemsg.append(self.sellorder(key, amountstockdic[key][0], amountstockdic[key][1], "03"))
                 token = 1
         if token == 1:
-            return 4, hedgelist
+            return 4, hegemsg
         return 1, 1
 
     def cancelorder(self):
@@ -371,6 +372,7 @@ class MarketInfo:
                 elif i == len(basket) - 1:
                     basket[i] = basket[i] + [0]
         del basket[0]
+        del basket[-1] # 오늘거 뒤에서 새로 추가함
         return basket  # ["날짜", "시가", "고가", "저가", "오늘종가", "거래량", "오늘증가율", "다음날고가증가율"]
 
     def Getnowprice(self, codelist):
@@ -758,9 +760,8 @@ class CheckToday:
 
 
 class Strategy:
-    def ppostrategy(self, market):
+    def ppostrategy(self, market, todaydate):
         codelist = []
-        todaydate = int(datetime.today().strftime("%Y%m%d"))
         useppo = UsePPO(market)
         marketbasket = useppo.marketbasket
         for day in range(len(marketbasket)):
@@ -785,7 +786,7 @@ class FileMethods:
         os.makedirs("C:\\주가정보\\코스닥150", exist_ok=True)
         return True
 
-    def save_Info(self, period):  # 90초 걸림
+    def save_Info(self, period):  # 분기에 한번씩 해줄것
         self.clearfile()
         marketinfo = MarketInfo()
         codelist = marketinfo.Get_Market_Indexlist_fromcreon()
@@ -820,7 +821,41 @@ class FileMethods:
         f.close()
         f = open(f"C:\\주가정보\\코스닥150\\코스닥150.txt", 'w', encoding='utf-8')
         f.write(str(marketinfo.GetstockPeriodInfo(period, 'U201')))
-        f.close()
+        f.close()  #
+
+    def save_Info_from_marketeye(self, todaydate):  # 90초 걸림
+        file = FileMethods()
+        codelist = file.GetStockList("코스피200")
+        self.marketeye_save(todaydate, codelist, "코스피200")
+        codelist = file.GetStockList("코스닥150")
+        self.marketeye_save(todaydate, codelist, "코스닥150")
+        return True
+
+    def marketeye_save(self, nowdate, codelist, market):
+        objRq = win32com.client.Dispatch("CpSysDib.MarketEye")
+        rqField = [0, 4, 5, 6, 7, 10]  # 날짜랑 아무숫자 2개 추가
+        objRq.SetInputValue(0, rqField)
+        objRq.SetInputValue(1, codelist)
+        GetLimitTime()
+        objRq.BlockRequest()
+        length = objRq.GetHeaderValue(2)
+        for i in range(length):
+            code = objRq.GetDataValue(0, i)
+            now = objRq.GetDataValue(1, i)  # 코드
+            start = objRq.GetDataValue(2, i)  # 현재가
+            high = objRq.GetDataValue(3, i)
+            low = objRq.GetDataValue(4, i)
+            volume = objRq.GetDataValue(5, i)
+            basket = [nowdate, start, high, low, now, volume, 0, 0]
+            with open(f"C:\\주가정보\\{market}\\{code}.txt", 'r') as f:
+                lines = f.readlines()[0]
+                newline = lines[:-1] + ", "
+            with open(f"C:\\주가정보\\{market}\\{code}.txt", "w") as f:
+                f.write(newline)
+            f = open(f"C:\\주가정보\\{market}\\{code}.txt", 'a', encoding='utf-8')
+            f.write(str(basket) + "]")
+            f.close()
+        return True
 
     def StockDayList(self, filename, code):
         f = open(f"C:\\주가정보\\{filename}\\{code}.txt", 'r', encoding='utf-8')

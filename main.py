@@ -15,13 +15,18 @@ def test():
     print(qospilist, qosdaqlist)
 
 
+def refresh():
+    file = FileMethods()
+    file.save_Info(501)  # 매일 실행
+    return True
+
+
 def textbox(numtype, msg, deposit):
     todaydate = str(datetime.today().strftime("%Y%m%d"))
     token = "5141292184:AAENQEkjsmqVgRWUSS32e3K_LFWeRzbv3xI"
     bot = telepot.Bot(token)
     deposit = str(deposit)
     if numtype == 0:
-        bot.sendMessage(1886738532, text="----------------" + todaydate + "---------------")
         bot.sendMessage(1886738532, text="오늘은 종목이 없습니다.")
         bot.sendMessage(1886738532, text="잔액: " + deposit)
     elif numtype == 1:
@@ -36,7 +41,11 @@ def textbox(numtype, msg, deposit):
             bot.sendMessage(1886738532, text=i)
         bot.sendMessage(1886738532, text="잔액: " + deposit)
     elif numtype == 4:
-        bot.sendMessage(1886738532, text=msg + "헷지 하였습니다.")
+        bot.sendMessage(1886738532, text="헷지 하였습니다.")
+        bot.sendMessage(1886738532, text="-----------------------------")
+        for i in msg:
+            bot.sendMessage(1886738532, text=msg[i])
+        bot.sendMessage(1886738532, text="-----------------------------")
     elif numtype == 5:
         bot.sendMessage(1886738532, text="프로그램을 종료해주세요.")
 
@@ -44,12 +53,13 @@ def textbox(numtype, msg, deposit):
 
 def job1():
     Connect()
+    todaydate = int(datetime.today().strftime("%Y%m%d"))
     file = FileMethods()
-    file.save_Info(501)
+    file.save_Info_from_marketeye(todaydate)
     account = Account()
     strategy = Strategy()
-    qospilist = strategy.ppostrategy("코스피200")
-    qosdaqlist = strategy.ppostrategy("코스닥150")
+    qospilist = strategy.ppostrategy("코스피200",todaydate)
+    qosdaqlist = strategy.ppostrategy("코스닥150",todaydate)
     msg = account.buy(qosdaqlist, qospilist)
     stockdeposit = account.stockdeposit()
     deposit = account.deposit()
@@ -88,8 +98,8 @@ def job5():
     deposit = 0
     textbox(5, todaystock, deposit)
 
-
 schedule.every().day.at("15:14").do(job1)
+schedule.every().day.at("18:01").do(refresh)
 schedule.every().day.at("11:30").do(job3)
 schedule.every().day.at("22:00").do(job5)
 
@@ -99,7 +109,6 @@ while True:
     if nowtime <= 85910 or 90010 <= nowtime <= 112920:
         job4()
         time.sleep(5)
-
 
 
 
