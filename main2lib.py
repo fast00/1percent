@@ -1,6 +1,10 @@
-import time
-import numpy as np
+from pykrx import stock
 import win32com.client
+from datetime import datetime
+import os
+import shutil
+import time
+import numpy
 
 KOSPI = 1
 KOSDAQ = 2
@@ -398,7 +402,7 @@ class PPOMethod:
 
     def DicInitialize_forMarket(self, PPO):
         self.PPOrange = self.SortList(PPO)  # [PPO만 리스트에 저장해서 정렬함]
-        iter = np.arange(0, self.PPOrange[-1] + 0.1 - self.PPOrange[0], 0.1)
+        iter = numpy .arange(0, self.PPOrange[-1] + 0.1 - self.PPOrange[0], 0.1)
         for i in iter:
             i = round(i, 1)
             self.PPOrangecount[self.PPOrange[0] + i] = 0
@@ -425,11 +429,10 @@ class PPOMethod:
                 self.PPOrangePercent[self.PPOrange[0] + i] = 0
         return self.PPOrangePercent
 
-    def Get_result(self, pathday):
-        k = 1 + int(pathday / 500)
+    def Get_result(self):
         result = []
         for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):
-            if 2 * k <= self.PPOrangePaticularcount[self.PPOrange[0] + i] <= 9 * k and \
+            if 2 <= self.PPOrangePaticularcount[self.PPOrange[0] + i] <= 9 and \
                     self.PPOrangePercent[self.PPOrange[0] + i] >= 85:
                 result.append(round(self.PPOrange[0] + i, 2))
                 # print(self.rateofchange,"\n",round(self.PPOrange[0] + i,2),self.PPOrangePercent[self.PPOrange[0] + i],"\n", self.daylist[self.PPOrange[0] + i])
@@ -437,7 +440,7 @@ class PPOMethod:
 
     def Condition_Setting_forMarket(self, PPO, increaserate):
         self.DicInitialize_forMarket(PPO)
-        iter = np.arange(0, self.PPOrange[-1] + 0.1 - self.PPOrange[0], 0.1)
+        iter = numpy .arange(0, self.PPOrange[-1] + 0.1 - self.PPOrange[0], 0.1)
         for i in iter:
             i = round(i, 1)
             for k in range(len(PPO)):
@@ -458,7 +461,7 @@ class PPOMethod:
 
     def Get_result_forMarket(self):
         result = []
-        iter = np.arange(0, self.PPOrange[-1] + 0.1 - self.PPOrange[0], 0.1)
+        iter = numpy .arange(0, self.PPOrange[-1] + 0.1 - self.PPOrange[0], 0.1)
         for i in iter:
             i = round(i, 1)
             if self.PPOrangePaticularcount[self.PPOrange[0] + i] >= 5 and self.PPOrangePercent[
@@ -523,11 +526,11 @@ class TotalResult:
         result += method.Get_result_forMarket()
         return result  # [이격도]
 
-    def StockOverlapppoListFromFile(self, PPO, increaserate, pathday):
+    def StockOverlapppoListFromFile(self, PPO, increaserate):
         result = []
         ppomethod = PPOMethod()
         ppomethod.Condition_Setting(PPO, increaserate)
-        middleresult = ppomethod.Get_result(pathday)
+        middleresult = ppomethod.Get_result()
         if len(middleresult) != 0:  # 비어있는 middleresult가 [] 1개임
             result += middleresult
         return result  # [이격도]
@@ -577,14 +580,14 @@ class FileMethods:
         return codelistinfile, kospibasket2, basket2
 
     def StockDayList(self, filename, code):
-        f = open(f"C:\\Users\\82104\\Desktop\\{filename}\\{code}.txt", 'r', encoding='utf-8')
+        f = open(f"C:\\주가정보\\{filename}\\{code}.txt", 'r', encoding='utf-8')
         txt = f.read()
         result = self.ChangeDayList(txt)
         f.close()
         return result
 
     def MarketDayList(self, filename):
-        f = open(f"C:\\Users\\82104\\Desktop\\{filename}\\{filename}.txt", 'r', encoding='utf-8')
+        f = open(f"C:\\주가정보\\{filename}\\{filename}.txt", 'r', encoding='utf-8')
         txt = f.read()
         result = self.ChangeDayList(txt)
         f.close()
@@ -606,8 +609,274 @@ class FileMethods:
         return result
 
     def GetStockList(self, filename):
-        f = open(f"C:\\Users\\82104\\Desktop\\{filename}\\codelist.txt", 'r', encoding='utf-8')
+        f = open(f"C:\\주가정보\\{filename}\\codelist.txt", 'r', encoding='utf-8')
         txt = f.read()
         txt = txt.replace('[', '').replace(']', '').replace(' ', '').replace('\r', '').replace('\'', '')
         result = txt.split(",")
+        return result
+
+class MarketInfo2:
+    def __init__(self):
+        self.objStockChart = win32com.client.Dispatch("CpSysDib.StockChart")
+        self.g_objCodeMgr = win32com.client.Dispatch("CpUtil.CpCodeMgr")
+        self.objRq = win32com.client.Dispatch("CpSysDib.MarketEye")
+
+    def Get_Market_Indexlist_fromkrx(self):
+        todaydate = datetime.today().strftime("%Y%m%d")
+        qospilist = []
+        qosdaqlist = []
+        for ticker in stock.get_index_ticker_list(todaydate):
+            if "코스피 200" == stock.get_index_ticker_name(ticker):
+                qospi = stock.get_index_portfolio_deposit_file(ticker)
+                for code in qospi:
+                    qospilist.append("A" + code)
+                break
+        for ticker in stock.get_index_ticker_list(todaydate, market='KOSDAQ'):
+            if "코스닥 150" == stock.get_index_ticker_name(ticker):
+                qosdaq = stock.get_index_portfolio_deposit_file(ticker)
+                for code in qosdaq:
+                    qosdaqlist.append("A" + code)
+                break
+        return qospilist, qosdaqlist
+
+    def Get_Market_Indexlist_fromcreon(self):
+        qospilist = list(self.g_objCodeMgr.GetGroupCodeList(180))
+        qosdaqlist = list(self.g_objCodeMgr.GetGroupCodeList(390))
+        return qospilist, qosdaqlist
+
+    def GetstockPeriodInfo(self, period, code):
+        """
+         일별 ["날짜", "시가", "고가", "저가", "오늘종가", "오늘증가율", "고가증가율"]
+         :param code, period: 코드, 기간(일)
+         :return: 기간 별 정보
+         """
+        self.objStockChart.SetInputValue(0, str(code))  # 종목 코드
+        self.objStockChart.SetInputValue(1, ord('2'))  # 개수로 조회
+        self.objStockChart.SetInputValue(4, period + 1)  # 1일치가 계산하면서 삭제됨
+        self.objStockChart.SetInputValue(5, [0, 2, 3, 4, 5, 8])  # 날짜,시가,고가,저가,종가,거래량
+        self.objStockChart.SetInputValue(6, ord('D'))  # '차트 주가 - 일간 차트 요청
+        self.objStockChart.SetInputValue(9, ord('1'))  # 수정주가 사용
+        self.objStockChart.BlockRequest()
+        GetLimitTime()
+        len1 = self.objStockChart.GetHeaderValue(3)
+        condition = self.objStockChart.GetHeaderValue(17)
+        if chr(condition) != '0':  # 정상이 아닌 종목
+            return 1
+        basket = []
+        for i in range(len1):
+            day = self.objStockChart.GetDataValue(0, i)
+            open = self.objStockChart.GetDataValue(1, i)
+            high = self.objStockChart.GetDataValue(2, i)
+            low = self.objStockChart.GetDataValue(3, i)
+            todayclose = self.objStockChart.GetDataValue(4, i)
+            volume = self.objStockChart.GetDataValue(5, i)
+            basket.append([day, open, high, low, todayclose, volume])  # "날짜", "시가", "고가", "저가", "오늘종가", "거래량"
+        basket.reverse()
+        for i in range(len(basket)):
+            if 0 < i:
+                try:
+                    todaypercent = round((basket[i][4] - basket[i - 1][4]) / basket[i - 1][4] * 100, 2)
+                except ZeroDivisionError:
+                    todaypercent = 0
+                basket[i] = basket[i] + [todaypercent]
+                if i < len(basket) - 1:
+                    try:
+                        nextdayhighpercent = round((basket[i + 1][2] - basket[i][4]) / basket[i][4] * 100, 2)
+                    except ZeroDivisionError:
+                        nextdayhighpercent = 0
+                    basket[i] = basket[i] + [nextdayhighpercent]
+                elif i == len(basket) - 1:
+                    basket[i] = basket[i] + [0]
+        del basket[0]
+        return basket  # ["날짜", "시가", "고가", "저가", "오늘종가", "거래량", "오늘증가율", "다음날고가증가율"]
+
+    def GetstockMinutePeriodInfo(self, code):  # 3일치를 부르면, 오늘 제외하고 2일치가 옴.
+        """
+         일별 ["날짜", "시가", "고가", "저가", "오늘종가", "오늘증가율", "고가증가율"]
+         :param: code, period: 코드, 기간(일)
+         :return: 기간 별 정보
+         """
+        self.objStockChart.SetInputValue(0, str(code))  # 종목 코드
+        self.objStockChart.SetInputValue(1, ord('2'))  # 개수로 조회
+        self.objStockChart.SetInputValue(4, 3)  # 최근 100일 치 1561
+        self.objStockChart.SetInputValue(5, [1, 4, 5])  # 날짜,시간,시가,고가,저가,종가,거래량
+        self.objStockChart.SetInputValue(6, ord('m'))  # '차트 주기 - 분/틱
+        self.objStockChart.SetInputValue(9, ord('1'))  # 수정주가 사용
+        self.objStockChart.BlockRequest()
+        GetLimitTime()
+        len1 = self.objStockChart.GetHeaderValue(3)
+        basket = []
+        for i in range(len1):
+            time = self.objStockChart.GetDataValue(0, i)
+            low = self.objStockChart.GetDataValue(1, i)
+            end = self.objStockChart.GetDataValue(2, i)
+            basket.append([time - 1, low, end])
+        basket.reverse()
+        for i in range(len(basket)):
+            if i == 1:
+                try:
+                    percent = round((basket[i][1] - basket[i-1][2]) / basket[i-1][2] * 100, 2)
+                except ZeroDivisionError:
+                    percent = 0
+                basket[i] = [basket[i][0], percent]
+        del basket[0]
+        del basket[-1]
+        return basket[0]
+
+
+    def Getnowprice(self, codelist):
+        pricedic = {}
+        rqField = [0, 4]
+        self.objRq.SetInputValue(0, rqField)
+        self.objRq.SetInputValue(1, codelist)
+        GetLimitTime()
+        self.objRq.BlockRequest()
+        length = self.objRq.GetHeaderValue(2)
+        for i in range(length):
+            code = self.objRq.GetDataValue(0, i)  # 코드
+            price = self.objRq.GetDataValue(1, i)  # 현재가
+            pricedic[code] = price
+        return pricedic
+
+    def Getlowprice(self, codelist):
+        rqField = [0, 7, 23]
+        self.objRq.SetInputValue(0, rqField)
+        self.objRq.SetInputValue(1, codelist)
+        GetLimitTime()
+        self.objRq.BlockRequest()
+        length = self.objRq.GetHeaderValue(2)
+        lowdic = {}
+        for i in range(length):
+            code = self.objRq.GetDataValue(0, i)  # 코드
+            low = self.objRq.GetDataValue(1, i)  # 저가
+            yesterdayclose = self.objRq.GetDataValue(2, i)  # 어제 종가
+            lowpercent = (low - yesterdayclose) / yesterdayclose * 100
+            lowdic[code] = lowpercent
+        return lowdic
+
+    def Get_MarketOpentime(self):
+        return self.g_objCodeMgr.GetMarketStartTime()
+
+    def Get_MarketEndtime(self):
+        return self.g_objCodeMgr.GetMarketEndTime()
+
+class FileMethods2:
+    def clearfile(self):
+        dir_path = "C:\\주가정보\\코스피200!"
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+        os.makedirs("C:\\주가정보\\코스피200!", exist_ok=True)
+        dir_path = "C:\\주가정보\\코스닥150!"
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+        os.makedirs("C:\\주가정보\\코스닥150!", exist_ok=True)
+        return True
+
+    def save_Info(self, period):  # 분기에 한번씩 해줄것
+        self.clearfile()
+        marketinfo = MarketInfo2()
+        codelist = marketinfo.Get_Market_Indexlist_fromcreon()
+        qospi = codelist[0]
+        qosdaq = codelist[1]
+        clearqospi = []
+        clearqosdaq = []
+        for code in qospi:
+            basket = marketinfo.GetstockPeriodInfo(period, code)
+            if basket == 1:
+                continue
+            clearqospi.append(code)
+            f = open(f"C:\\주가정보\\코스피200!\\{code}.txt", 'w', encoding='utf-8')
+            f.write(str(basket))
+            f.close()
+        f = open(f"C:\\주가정보\\코스피200!\\codelist.txt", 'w', encoding='utf-8')
+        f.write(str(clearqospi))
+        f.close()
+        f = open(f"C:\\주가정보\\코스피200!\\코스피200!.txt", 'w', encoding='utf-8')
+        f.write(str(marketinfo.GetstockPeriodInfo(period, 'U001')))
+        f.close()
+        for code in qosdaq:
+            basket = marketinfo.GetstockPeriodInfo(period, code)
+            if basket == 1:
+                continue
+            clearqosdaq.append(code)
+            f = open(f"C:\\주가정보\\코스닥150!\\{code}.txt", 'w', encoding='utf-8')
+            f.write(str(basket))
+            f.close()
+        f = open(f"C:\\주가정보\\코스닥150!\\codelist.txt", 'w', encoding='utf-8')
+        f.write(str(clearqosdaq))
+        f.close()
+        f = open(f"C:\\주가정보\\코스닥150!\\코스닥150!.txt", 'w', encoding='utf-8')
+        f.write(str(marketinfo.GetstockPeriodInfo(period, 'U201')))
+        f.close()  #
+        return True
+
+    def save_Info_from_marketeye(self, todaydate):  # 90초 걸림
+        file = FileMethods()
+        codelist = file.GetStockList("코스피200!")
+        self.marketeye_save(todaydate, codelist, "코스피200!")
+        codelist = file.GetStockList("코스닥150!")
+        self.marketeye_save(todaydate, codelist, "코스닥150!")
+        return True
+
+    def marketeye_save(self, nowdate, codelist, market):
+        objRq = win32com.client.Dispatch("CpSysDib.MarketEye")
+        rqField = [0, 4, 5, 6, 7, 10]  # 날짜랑 아무숫자 2개 추가
+        objRq.SetInputValue(0, rqField)
+        objRq.SetInputValue(1, codelist)
+        GetLimitTime()
+        objRq.BlockRequest()
+        length = objRq.GetHeaderValue(2)
+        for i in range(length):
+            code = objRq.GetDataValue(0, i)
+            now = objRq.GetDataValue(1, i)  # 코드
+            start = objRq.GetDataValue(2, i)  # 현재가
+            high = objRq.GetDataValue(3, i)
+            low = objRq.GetDataValue(4, i)
+            volume = objRq.GetDataValue(5, i)
+            basket = [nowdate, start, high, low, now, volume, 0, 0]
+            with open(f"C:\\주가정보\\{market}\\{code}.txt", 'r') as f:
+                lines = f.readlines()[0]
+                newline = lines[:-1] + ", "
+            with open(f"C:\\주가정보\\{market}\\{code}.txt", "w") as f:
+                f.write(newline)
+            f = open(f"C:\\주가정보\\{market}\\{code}.txt", 'a', encoding='utf-8')
+            f.write(str(basket) + "]")
+            f.close()
+        return True
+
+    def StockDayList(self, filename, code):
+        f = open(f"C:\\주가정보\\{filename}\\{code}.txt", 'r', encoding='utf-8')
+        txt = f.read()
+        result = self.ChangeDayList(txt)
+        f.close()
+        return result
+
+    def MarketDayList(self, filename):
+        f = open(f"C:\\주가정보\\{filename}\\{filename}.txt", 'r', encoding='utf-8')
+        txt = f.read()
+        result = self.ChangeDayList(txt)
+        f.close()
+        return result
+
+    def ChangeDayList(self, txt):
+        txt = txt.replace('[', '').replace(']', '').replace(' ', '').replace('\r', '')
+        list1 = txt.split(",")
+        list2 = []
+        result = []
+        count = 0
+        for i in list1:
+            count += 1
+            list2.append(float(i))
+            if count == 8:
+                result.append(list2)
+                list2 = []
+                count = 0
+        return result
+
+    def GetStockList(self, filename):
+        f = open(f"C:\\주가정보\\{filename}\\codelist.txt", 'r', encoding='utf-8')
+        txt = f.read()
+        txt = txt.replace('[', '').replace(']', '').replace(' ', '').replace('\r', '').replace('\'', '')
+        result = txt.split(",")
+        f.close()
         return result
