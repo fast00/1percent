@@ -341,13 +341,17 @@ class Account:
         token = 0
         hegemsg = []
         stockdiposit = self.stockdeposit()
-        if stockdiposit == 6:
+        if stockdiposit[0] == 6:
             return True
         depositcodelist = stockdiposit[0]
         amountstockdic = stockdiposit[1]
         marketinfo = MarketInfo()
         lowpricedic = marketinfo.Getlowprice(depositcodelist)
         for key, val in lowpricedic.items():
+            minutecandle = MarketInfo().GetstockMinutePeriodInfo(key)
+            if minutecandle[1] < -1:
+                hegemsg.append(self.sellorder(key, amountstockdic[key][0], amountstockdic[key][1], "03"))
+                token = 1
             if val <= -11:
                 hegemsg.append(self.sellorder(key, amountstockdic[key][0], amountstockdic[key][1], "03"))
                 token = 1
@@ -381,6 +385,7 @@ class Account:
                 print("통신상태", objCancel.GetDibStatus(), objCancel.GetDibMsg1())
                 return False
             print("예약주문 취소 ", objCancel.GetDibMsg1())
+        return True
 
 
 class MarketInfo:
@@ -459,6 +464,40 @@ class MarketInfo:
         del basket[-1] # 오늘거 뒤에서 새로 추가함
         return basket  # ["날짜", "시가", "고가", "저가", "오늘종가", "거래량", "오늘증가율", "다음날고가증가율"]
 
+    def GetstockMinutePeriodInfo(self, code):  # 3일치를 부르면, 오늘 제외하고 2일치가 옴.
+        """
+         일별 ["날짜", "시가", "고가", "저가", "오늘종가", "오늘증가율", "고가증가율"]
+         :param: code, period: 코드, 기간(일)
+         :return: 기간 별 정보
+         """
+        self.objStockChart.SetInputValue(0, str(code))  # 종목 코드
+        self.objStockChart.SetInputValue(1, ord('2'))  # 개수로 조회
+        self.objStockChart.SetInputValue(4, 3)  # 최근 100일 치 1561
+        self.objStockChart.SetInputValue(5, [1, 4, 5])  # 날짜,시간,시가,고가,저가,종가,거래량
+        self.objStockChart.SetInputValue(6, ord('m'))  # '차트 주기 - 분/틱
+        self.objStockChart.SetInputValue(9, ord('1'))  # 수정주가 사용
+        self.objStockChart.BlockRequest()
+        GetLimitTime()
+        len1 = self.objStockChart.GetHeaderValue(3)
+        basket = []
+        for i in range(len1):
+            time = self.objStockChart.GetDataValue(0, i)
+            low = self.objStockChart.GetDataValue(1, i)
+            end = self.objStockChart.GetDataValue(2, i)
+            basket.append([time - 1, low, end])
+        basket.reverse()
+        for i in range(len(basket)):
+            if i == 1:
+                try:
+                    percent = round((basket[i][1] - basket[i-1][2]) / basket[i-1][2] * 100, 2)
+                except ZeroDivisionError:
+                    percent = 0
+                basket[i] = [basket[i][0], percent]
+        del basket[0]
+        del basket[-1]
+        return basket[0]
+
+
     def Getnowprice(self, codelist):
         pricedic = {}
         rqField = [0, 4]
@@ -519,6 +558,7 @@ class PPOMethod:
             self.PPOrangePaticularcount[self.PPOrange[0] + i] = 0
             self.PPOrangePercent[self.PPOrange[0] + i] = 0
             self.daylist[self.PPOrange[0] + i] = []
+        return True
 
     def Condition_Setting(self, PPO, increaserate):
         self.DicInitialize(PPO)
@@ -569,6 +609,7 @@ class UsePPO:
             basket = self.file.StockDayList(market, code)
             for i in range(len(basket)):
                 self.codedaybasket[code] += [basket[i]]
+        return True
 
     def CheckStrogStock(self, startdate, enddate, startpecent):
         fitcount = {}
@@ -906,6 +947,7 @@ class FileMethods:
         f = open(f"C:\\주가정보\\코스닥150\\코스닥150.txt", 'w', encoding='utf-8')
         f.write(str(marketinfo.GetstockPeriodInfo(period, 'U201')))
         f.close()  #
+        return True
 
     def save_Info_from_marketeye(self, todaydate):  # 90초 걸림
         file = FileMethods()

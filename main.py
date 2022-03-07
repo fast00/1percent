@@ -7,6 +7,7 @@ import time
 # 40만원으로 시작!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def refresh():
+    Connect()
     file = FileMethods()
     file.save_Info(501)  # 매일 실행
     return True
@@ -79,7 +80,7 @@ def job3():  # 전 주문 취소
     textbox(3, msg, deposit)
 
 
-def job4():  # 30초마다 실행
+def HedGe():  # 30초마다 실행
     Connect()
     deposit = 0
     account = Account()
@@ -94,15 +95,17 @@ def shut_down():
     textbox(5, todaystock, deposit)
 
 
-schedule.every().day.at("15:14").do(job1)
-schedule.every().day.at("18:01").do(refresh)
+schedule.every().day.at("15:19").do(job1)
+schedule.every().day.at("15:10").do(refresh)
 schedule.every().day.at("11:30").do(job3)
 schedule.every().day.at("22:00").do(shut_down)
 
 while True:
     schedule.run_pending()
     nowtime = int(datetime.today().strftime("%H%M%S"))
-    if nowtime <= 85910 or 90010 <= nowtime <= 112920:
-        job4()
+    if nowtime <= 91050 or 113040 <= nowtime < 150954 or 151300 <= nowtime <= 151850:
+        Connect()
         time.sleep(5)
-
+    elif 91100 <= nowtime <= 112940:
+        HedGe()
+        time.sleep(3)
