@@ -4,16 +4,7 @@ import schedule
 import time
 
 
-# 30만원으로 시작!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-def test():
-    Connect()
-    file = FileMethods()
-    file.save_Info(501)
-    strategy = Strategy()
-    qospilist = strategy.ppostrategy("코스피200")
-    qosdaqlist = strategy.ppostrategy("코스닥150")
-    print(qospilist, qosdaqlist)
-
+# 40만원으로 시작!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def refresh():
     file = FileMethods()
@@ -50,7 +41,6 @@ def textbox(numtype, msg, deposit):
         bot.sendMessage(1886738532, text="프로그램을 종료해주세요.")
 
 
-
 def job1():
     Connect()
     todaydate = int(datetime.today().strftime("%Y%m%d"))
@@ -58,8 +48,8 @@ def job1():
     file.save_Info_from_marketeye(todaydate)
     account = Account()
     strategy = Strategy()
-    qospilist = strategy.ppostrategy("코스피200",todaydate)
-    qosdaqlist = strategy.ppostrategy("코스닥150",todaydate)
+    qospilist = strategy.ppostrategy("코스피200", todaydate)
+    qosdaqlist = strategy.ppostrategy("코스닥150", todaydate)
     msg = account.buy(qosdaqlist, qospilist)
     stockdeposit = account.stockdeposit()
     deposit = account.deposit()
@@ -69,13 +59,18 @@ def job1():
         textbox(1, msg, deposit)
     if len(stockdeposit[1]) != 0:
         for key, val in stockdeposit[1].items():
-            upprice = int(val[1] * 1.01)
-            msg = account.reservation_sellorder(key, val[0], upprice)
-            textbox(2, msg, deposit)
+            if key in qospilist:
+                upprice = account.qospi_sellPrice_Quotation(val[1])
+                msg = account.reservation_sellorder(key, val[0], upprice)
+                textbox(2, msg, deposit)
+            else:
+                upprice = account.qosdaq_sellPrice_Quotation(val[1])
+                msg = account.reservation_sellorder(key, val[0], upprice)
+                textbox(2, msg, deposit)
     return True
 
 
-def job3():   # 전 주문 취소
+def job3():  # 전 주문 취소
     Connect()
     account = Account()
     account.reservation_cencelorder()
@@ -84,7 +79,7 @@ def job3():   # 전 주문 취소
     textbox(3, msg, deposit)
 
 
-def job4():  #30초마다 실행
+def job4():  # 30초마다 실행
     Connect()
     deposit = 0
     account = Account()
@@ -93,15 +88,16 @@ def job4():  #30초마다 실행
         textbox(4, Hedge[1], deposit)
 
 
-def job5():
+def shut_down():
     todaystock = []
     deposit = 0
     textbox(5, todaystock, deposit)
 
+
 schedule.every().day.at("15:14").do(job1)
 schedule.every().day.at("18:01").do(refresh)
 schedule.every().day.at("11:30").do(job3)
-schedule.every().day.at("22:00").do(job5)
+schedule.every().day.at("22:00").do(shut_down)
 
 while True:
     schedule.run_pending()
@@ -109,6 +105,4 @@ while True:
     if nowtime <= 85910 or 90010 <= nowtime <= 112920:
         job4()
         time.sleep(5)
-
-
 

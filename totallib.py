@@ -104,6 +104,86 @@ class Account:
         else:
             return 6, amountstockdic
 
+    def qospi_Price_Quotation(self, qospi):
+        nowprice = MarketInfo().Getnowprice(qospi)
+        for code, price in nowprice.items():
+            if price < 1000:
+                price += 1
+                nowprice[code] = price
+            elif 1000 <= price < 5000:
+                price += 5
+                nowprice[code] = price
+            elif 5000 <= price < 10000:
+                price += 10
+                nowprice[code] = price
+            elif 10000 <= price < 50000:
+                price += 50
+                nowprice[code] = price
+            elif 50000 <= price < 100000:
+                price += 100
+                nowprice[code] = price
+            elif 500000 <= price:
+                price += 500
+                nowprice[code] = price
+        return nowprice
+
+    def qosdaq_Price_Quotation(self, qosdaq):
+        nowprice = MarketInfo().Getnowprice(qosdaq)
+        for code,price in nowprice.items():
+            if price < 1000:
+                price += 1
+                nowprice[code] = price
+            elif 1000 <= price < 5000:
+                price += 5
+                nowprice[code] = price
+            elif 5000 <= price < 10000:
+                price += 10
+                nowprice[code] = price
+            elif 10000 <= price < 50000:
+                price += 50
+                nowprice[code] = price
+            elif 50000 <= price:
+                price += 100
+                nowprice[code] = price
+        return nowprice
+
+    def qospi_sellPrice_Quotation(self, price):
+        price = int(price + price * 0.01)
+        if price < 1000:
+            return price
+        elif 1000 <= price < 5000:
+            price = price - price % 5
+            return price
+        elif 5000 <= price < 10000:
+            price = price - price % 10
+            return price
+        elif 10000 <= price < 50000:
+            price = price - price % 50
+            return price
+        elif 50000 <= price < 100000:
+            price = price - price % 100
+            return price
+        elif 500000 <= price:
+            price = price - price % 500
+            return price
+
+    def qosdaq_sellPrice_Quotation(self, price):
+        price = int(price + price * 0.01)
+        if price < 1000:
+            return price
+        elif 1000 <= price < 5000:
+            price = price - price % 5
+            return price
+        elif 5000 <= price < 10000:
+            price = price - price % 10
+            return price
+        elif 10000 <= price < 50000:
+            price = price - price % 50
+            return price
+        elif 50000 <= price:
+            price = price - price % 100
+            return price
+
     def buyorder(self, code, amount, price):
         self.objStockOrder.SetInputValue(0, "2")  # 2: 매수
         self.objStockOrder.SetInputValue(1, self.acc)  # 계좌번호
@@ -116,7 +196,7 @@ class Account:
         nRet = self.objStockOrder.BlockRequest()
         rqStatus = self.objStockOrder.GetDibStatus()
         errMsg = self.objStockOrder.GetDibMsg1()
-        if nRet == 0 and rqStatus == 0:
+        if nRet != 0 or rqStatus != 0:
             return str(code + " - " + errMsg)
         return str(code + " - " + errMsg)
 
@@ -133,7 +213,7 @@ class Account:
         nRet = objStockOrder.BlockRequest()
         rqStatus = self.objStockOrder.GetDibStatus()
         errMsg = self.objStockOrder.GetDibMsg1()
-        if nRet == 0 and rqStatus == 0:
+        if nRet != 0 or rqStatus != 0:
             return str(code + " - " + errMsg)
         orderumdic[objStockOrder.GetHeaderValue(0)] = objStockOrder.GetHeaderValue(5)  # 예약번호 : 주문수량
         return str(code + " - " + errMsg)
@@ -192,26 +272,30 @@ class Account:
     def buy(self, qospilist, qosdaqlist):
         codelist = qospilist + qosdaqlist
         succescode = []
+        orderdic = {}
         if len(codelist) != 0:
             deposit = self.deposit()
             hedge = deposit * 0.05
             investment = deposit - hedge
             count = len(codelist)
             distribution = investment / count
-            nowprice = MarketInfo().Getnowprice(codelist)
-            for key, val in nowprice.items():
-                amount = int(distribution / val * 0.05)
+            if len(qospilist) != 0:
+                orderdic.update(self.qospi_Price_Quotation(qospilist))
+            if len(qosdaqlist) != 0:
+                orderdic.update(self.qosdaq_Price_Quotation(qosdaqlist))
+            for key, val in orderdic.items():
+                amount = int(distribution / val) # 지정가로 매수하는데 한 호가 위에 매수함. 시장가로 하게되면 30프로 위로 주문 올려서 예수금 모자람
                 if amount != 0:
                     GetaccountLimitTime()
-                    succescode.append(self.buyorder(key, amount, val * 0.05))
+                    succescode.append(self.buyorder(key, amount, val))
+            # ---------추가매수-----------
             deposit = self.deposit()
             investment = deposit - hedge
-            nowprice2 = MarketInfo().Getnowprice(codelist)
-            for key, val in nowprice2.items():
-                amount = int(investment / val * 0.05)
+            for key, val in orderdic.items():
+                amount = int(investment / val)
                 if amount != 0:
                     GetaccountLimitTime()
-                    succescode.append("(추가 매수)" + self.buyorder(key, amount, val * 0.05))
+                    succescode.append("(추가 매수)" + self.buyorder(key, amount, val))
             return succescode
         else:
             return 1
