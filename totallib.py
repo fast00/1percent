@@ -890,6 +890,7 @@ class Strategy:
         useppo = UsePPO(market)
         marketbasket = useppo.marketbasket
         for day in range(len(marketbasket)):
+            print(marketbasket[day][0],todaydate)
             if marketbasket[day][0] == todaydate:
                 print(todaydate)
                 beforemonth = marketbasket[day - 30][0]  # 최초는 20일, 30일 86.5 %
@@ -952,12 +953,16 @@ class FileMethods:
     def save_Info_from_marketeye(self, todaydate):  # 90초 걸림
         file = FileMethods()
         codelist = file.GetStockList("코스피200")
+        kospi = ["U001"]
         self.marketeye_save(todaydate, codelist, "코스피200")
+        self.marketeye_save(todaydate, kospi, "코스피200")
         codelist = file.GetStockList("코스닥150")
+        kosdaq = ["U201"]
         self.marketeye_save(todaydate, codelist, "코스닥150")
+        self.marketeye_save(todaydate, kosdaq, "코스닥150")
         return True
 
-    def marketeye_save(self, nowdate, codelist, market):
+    def marketeye_save(self, todaydate, codelist, market):
         objRq = win32com.client.Dispatch("CpSysDib.MarketEye")
         rqField = [0, 4, 5, 6, 7, 10]  # 날짜랑 아무숫자 2개 추가
         objRq.SetInputValue(0, rqField)
@@ -972,15 +977,25 @@ class FileMethods:
             high = objRq.GetDataValue(3, i)
             low = objRq.GetDataValue(4, i)
             volume = objRq.GetDataValue(5, i)
-            basket = [nowdate, start, high, low, now, volume, 0, 0]
-            with open(f"C:\\주가정보\\{market}\\{code}.txt", 'r') as f:
-                lines = f.readlines()[0]
-                newline = lines[:-1] + ", "
-            with open(f"C:\\주가정보\\{market}\\{code}.txt", "w") as f:
-                f.write(newline)
-            f = open(f"C:\\주가정보\\{market}\\{code}.txt", 'a', encoding='utf-8')
-            f.write(str(basket) + "]")
-            f.close()
+            basket = [todaydate, start, high, low, now, volume, 0, 0]
+            if len(codelist) == 1:
+                with open(f"C:\\주가정보\\{market}\\{market}.txt", 'r') as f:
+                    lines = f.readlines()[0]
+                    newline = lines[:-1] + ", "
+                with open(f"C:\\주가정보\\{market}\\{market}.txt", "w") as f:
+                    f.write(newline)
+                f = open(f"C:\\주가정보\\{market}\\{market}.txt", 'a', encoding='utf-8')
+                f.write(str(basket) + "]")
+                f.close()
+            else:
+                with open(f"C:\\주가정보\\{market}\\{code}.txt", 'r') as f:
+                    lines = f.readlines()[0]
+                    newline = lines[:-1] + ", "
+                with open(f"C:\\주가정보\\{market}\\{code}.txt", "w") as f:
+                    f.write(newline)
+                f = open(f"C:\\주가정보\\{market}\\{code}.txt", 'a', encoding='utf-8')
+                f.write(str(basket) + "]")
+                f.close()
         return True
 
     def StockDayList(self, filename, code):
