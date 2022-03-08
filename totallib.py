@@ -461,7 +461,7 @@ class MarketInfo:
                 elif i == len(basket) - 1:
                     basket[i] = basket[i] + [0]
         del basket[0]
-        del basket[-1] # 오늘거 뒤에서 새로 추가함
+        del basket[-1]  # 오늘거 뒤에서 새로 추가함
         return basket  # ["날짜", "시가", "고가", "저가", "오늘종가", "거래량", "오늘증가율", "다음날고가증가율"]
 
     def GetstockMinutePeriodInfo(self, code):  # 3일치를 부르면, 오늘 제외하고 2일치가 옴.
@@ -890,7 +890,6 @@ class Strategy:
         useppo = UsePPO(market)
         marketbasket = useppo.marketbasket
         for day in range(len(marketbasket)):
-            print(marketbasket[day][0],todaydate)
             if marketbasket[day][0] == todaydate:
                 print(todaydate)
                 beforemonth = marketbasket[day - 30][0]  # 최초는 20일, 30일 86.5 %
@@ -947,7 +946,7 @@ class FileMethods:
         f.close()
         f = open(f"C:\\주가정보\\코스닥150\\코스닥150.txt", 'w', encoding='utf-8')
         f.write(str(marketinfo.GetstockPeriodInfo(period, 'U201')))
-        f.close()  #
+        f.close()
         return True
 
     def save_Info_from_marketeye(self, todaydate):  # 90초 걸림

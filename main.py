@@ -94,8 +94,9 @@ def shut_down():
     deposit = 0
     textbox(5, todaystock, deposit)
 
-
-schedule.every().day.at("15:19").do(job1)
+refresh()
+job1()
+schedule.every().day.at("15:19:50").do(job1)
 schedule.every().day.at("15:10").do(refresh)
 schedule.every().day.at("11:30").do(job3)
 schedule.every().day.at("22:00").do(shut_down)
