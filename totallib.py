@@ -59,51 +59,7 @@ class CpTimeChecker:
         return remainTime, remainCount
 
 
-class Account:
-    def __init__(self):
-        self.objTrade = win32com.client.Dispatch("CpTrade.CpTdUtil")  # 함수안에서 전역변수로 써야함함
-        self.initCheck = self.objTrade.TradeInit(0)
-        if self.initCheck != 0:
-            print("주문 초기화 실패")
-            exit()
-        else:
-            self.acc = self.objTrade.AccountNumber[0]
-            self.accFlag = self.objTrade.GoodsList(self.acc, 1)
-            print(self.acc, self.accFlag[0], "계좌 주문 초기화 완료")
-        self.objStockOrder = win32com.client.Dispatch("CpTrade.CpTd0311")
-        self.objCancel = win32com.client.Dispatch("CpTrade.CpTdNew9064")
-
-    def deposit(self):
-        CpTdNew = win32com.client.Dispatch("CpTrade.CpTdNew5331A")
-        CpTdNew.SetInputValue(0, self.acc)
-        CpTdNew.SetInputValue(1, self.accFlag[0])
-        CpTdNew.SetInputValue(6, ord("1"))
-        CpTdNew.BlockRequest()
-        money = int(CpTdNew.GetHeaderValue(9))
-        print("현재 잔액: ", money)
-        return money
-
-    def stockdeposit(self):
-        stocklist = []
-        amountstockdic = {}
-        objRq = win32com.client.Dispatch("CpTrade.CpTd6033")
-        objRq.SetInputValue(0, self.acc)
-        objRq.SetInputValue(1, self.accFlag[0])
-        objRq.SetInputValue(2, 50)
-        objRq.BlockRequest()
-        cnt = objRq.GetHeaderValue(7)
-        for i in range(cnt):
-            code = objRq.GetDataValue(12, i)  # 잔고에 있는 종목
-            amount = objRq.GetDataValue(15, i)
-            price = objRq.GetDataValue(17, i)
-            stocklist.append(code)
-            amountstockdic[code] = [amount, price]
-        print("현재 잔고에 있는 종목 수:", len(stocklist))
-        if len(stocklist) != 0:
-            return stocklist, amountstockdic
-        else:
-            return 6, amountstockdic
-
+class Cal_Price:
     def qospi_Price_Quotation(self, qospi):
         nowprice = MarketInfo().Getnowprice(qospi)
         for code, price in nowprice.items():
@@ -129,7 +85,7 @@ class Account:
 
     def qosdaq_Price_Quotation(self, qosdaq):
         nowprice = MarketInfo().Getnowprice(qosdaq)
-        for code,price in nowprice.items():
+        for code, price in nowprice.items():
             if price < 1000:
                 price += 1
                 nowprice[code] = price
@@ -184,6 +140,52 @@ class Account:
             price = price - price % 100
             return price
 
+
+class Account_and_Order:
+    def __init__(self):
+        self.objTrade = win32com.client.Dispatch("CpTrade.CpTdUtil")  # 함수안에서 전역변수로 써야함
+        self.initCheck = self.objTrade.TradeInit(0)
+        if self.initCheck != 0:
+            print("주문 초기화 실패")
+            exit()
+        else:
+            self.acc = self.objTrade.AccountNumber[0]
+            self.accFlag = self.objTrade.GoodsList(self.acc, 1)
+            print(self.acc, self.accFlag[0], "계좌 주문 초기화 완료")
+        self.objCancel = win32com.client.Dispatch("CpTrade.CpTdNew9064")
+        self.objStockOrder = win32com.client.Dispatch("CpTrade.CpTd0311")
+
+    def deposit(self):
+        CpTdNew = win32com.client.Dispatch("CpTrade.CpTdNew5331A")
+        CpTdNew.SetInputValue(0, self.acc)
+        CpTdNew.SetInputValue(1, self.accFlag[0])
+        CpTdNew.SetInputValue(6, ord("1"))
+        CpTdNew.BlockRequest()
+        money = int(CpTdNew.GetHeaderValue(9))
+        print("현재 잔액: ", money)
+        return money
+
+    def stockdeposit(self):
+        stocklist = []
+        amountstockdic = {}
+        objRq = win32com.client.Dispatch("CpTrade.CpTd6033")
+        objRq.SetInputValue(0, self.acc)
+        objRq.SetInputValue(1, self.accFlag[0])
+        objRq.SetInputValue(2, 50)
+        objRq.BlockRequest()
+        cnt = objRq.GetHeaderValue(7)
+        for i in range(cnt):
+            code = objRq.GetDataValue(12, i)  # 잔고에 있는 종목
+            amount = objRq.GetDataValue(15, i)
+            price = objRq.GetDataValue(17, i)
+            stocklist.append(code)
+            amountstockdic[code] = [amount, price]
+        print("현재 잔고에 있는 종목 수:", len(stocklist))
+        if len(stocklist) != 0:
+            return stocklist, amountstockdic
+        else:
+            return 6, amountstockdic
+
     def buyorder(self, code, amount, price):
         self.objStockOrder.SetInputValue(0, "2")  # 2: 매수
         self.objStockOrder.SetInputValue(1, self.acc)  # 계좌번호
@@ -218,7 +220,7 @@ class Account:
         orderumdic[objStockOrder.GetHeaderValue(0)] = objStockOrder.GetHeaderValue(5)  # 예약번호 : 주문수량
         return str(code + " - " + errMsg)
 
-    def reservation_cencelorder(self):
+    def reservation_cencelorder(self):  # 예약번호를 가져옴
         objResult = win32com.client.Dispatch("CpTrade.CpTd9065")
         objResult.SetInputValue(0, self.acc)
         objResult.SetInputValue(1, self.accFlag[0])
@@ -241,7 +243,7 @@ class Account:
                 break
         return True
 
-    def reservation_cencel(self, code, ordernum):
+    def reservation_cencel(self, code, ordernum):  # 예약을 취소함
         self.objCancel.SetInputValue(0, ordernum)
         self.objCancel.SetInputValue(1, self.acc)
         self.objCancel.SetInputValue(2, self.accFlag[0])
@@ -261,7 +263,7 @@ class Account:
         self.objStockOrder.SetInputValue(4, amount)  # 매수수량 - 요청 수량으로 변경 필요
         self.objStockOrder.SetInputValue(5, price)  # 주문단가 - 필요한 가격으로 변경 필요
         self.objStockOrder.SetInputValue(7, "0")  # 주문 조건 구분 코드, 0: 기본 1: IOC 2:FOK
-        self.objStockOrder.SetInputValue(8, selltype)  # 주문호가 구분코드 - 01: 보통
+        self.objStockOrder.SetInputValue(8, selltype)  # 주문호가 구분코드 - 01: 보통 03 : 시장가
         nRet = self.objStockOrder.BlockRequest()
         rqStatus = self.objStockOrder.GetDibStatus()
         errMsg = self.objStockOrder.GetDibMsg1()
@@ -275,16 +277,18 @@ class Account:
         orderdic = {}
         if len(codelist) != 0:
             deposit = self.deposit()
-            hedge = deposit * 0.05
+            if len(codelist) < 4:
+                deposit = int(deposit / 2)
+            hedge = deposit * 0.05  # 5프로 헷지
             investment = deposit - hedge
             count = len(codelist)
             distribution = investment / count
             if len(qospilist) != 0:
-                orderdic.update(self.qospi_Price_Quotation(qospilist))
+                orderdic.update(Cal_Price().qospi_Price_Quotation(qospilist))
             if len(qosdaqlist) != 0:
-                orderdic.update(self.qosdaq_Price_Quotation(qosdaqlist))
+                orderdic.update(Cal_Price().qosdaq_Price_Quotation(qosdaqlist))
             for key, val in orderdic.items():
-                amount = int(distribution / val) # 지정가로 매수하는데 한 호가 위에 매수함. 시장가로 하게되면 30프로 위로 주문 올려서 예수금 모자람
+                amount = int(distribution / val)  # 지정가로 매수하는데 한 호가 위에 매수함. 시장가로 하게되면 30프로 위로 주문 올려서 예수금 모자람
                 if amount != 0:
                     GetaccountLimitTime()
                     succescode.append(self.buyorder(key, amount, val))
@@ -300,26 +304,7 @@ class Account:
         else:
             return 1
 
-    def firstsell(self):
-        succeslist = []
-        objRq = win32com.client.Dispatch("CpTrade.CpTd6033")
-        objRq.SetInputValue(0, self.acc)  # 계좌번호
-        objRq.SetInputValue(1, self.accFlag[0])  # 상품구분 - 주식 상품 중 첫번째
-        objRq.SetInputValue(2, 50)
-        objRq.BlockRequest()
-        cnt = objRq.GetHeaderValue(7)
-        balancelist = {}
-        for i in range(cnt):
-            code = objRq.GetDataValue(12, i)
-            amount = objRq.GetDataValue(7, i)
-            price = objRq.GetDataValue(17, i)
-            balancelist[code] = [amount, price]  # 코드 : [수량, 단가]
-            sellprice = int(price * 1.01)
-            GetaccountLimitTime()
-            succeslist.append(self.reservation_sellorder(code, amount, sellprice))
-        return succeslist
-
-    def secondsell(self):
+    def sellall(self):
         succeslist = []
         objRq = win32com.client.Dispatch("CpTrade.CpTd6033")
         objRq.SetInputValue(0, self.acc)  # 계좌번호
@@ -342,7 +327,7 @@ class Account:
         hegemsg = []
         stockdiposit = self.stockdeposit()
         if stockdiposit[0] == 6:
-            return True
+            return 6, 6
         depositcodelist = stockdiposit[0]
         amountstockdic = stockdiposit[1]
         marketinfo = MarketInfo()
@@ -420,6 +405,7 @@ class MarketInfo:
     def GetstockPeriodInfo(self, period, code):
         """
          일별 ["날짜", "시가", "고가", "저가", "오늘종가", "오늘증가율", "고가증가율"]
+         :param code:
          :param code, period: 코드, 기간(일)
          :return: 기간 별 정보
          """
@@ -489,14 +475,13 @@ class MarketInfo:
         for i in range(len(basket)):
             if i == 1:
                 try:
-                    percent = round((basket[i][1] - basket[i-1][2]) / basket[i-1][2] * 100, 2)
+                    percent = round((basket[i][1] - basket[i - 1][2]) / basket[i - 1][2] * 100, 2)
                 except ZeroDivisionError:
                     percent = 0
                 basket[i] = [basket[i][0], percent]
         del basket[0]
         del basket[-1]
         return basket[0]
-
 
     def Getnowprice(self, codelist):
         pricedic = {}
@@ -528,12 +513,6 @@ class MarketInfo:
             lowdic[code] = lowpercent
         return lowdic
 
-    def Get_MarketOpentime(self):
-        return self.g_objCodeMgr.GetMarketStartTime()
-
-    def Get_MarketEndtime(self):
-        return self.g_objCodeMgr.GetMarketEndTime()
-
 
 class PPOMethod:
     def __init__(self):
@@ -544,7 +523,7 @@ class PPOMethod:
         self.PPOrangePercent = {}
         self.daylist = {}
 
-    def SortList(self, PPO):
+    def sortlist(self, PPO):
         result = []
         for i in range(len(PPO)):
             result.append(PPO[i][1])
@@ -552,7 +531,7 @@ class PPOMethod:
         return result
 
     def DicInitialize(self, PPO):
-        self.PPOrange = self.SortList(PPO)  # [PPO만 리스트에 저장해서 정렬함]
+        self.PPOrange = self.sortlist(PPO)  # [PPO만 리스트에 저장해서 정렬함]
         for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):
             self.PPOrangecount[self.PPOrange[0] + i] = 0
             self.PPOrangePaticularcount[self.PPOrange[0] + i] = 0
@@ -621,7 +600,7 @@ class UsePPO:
                     fitcount[keys] += 1
         sortlist = sorted(fitcount.items(), key=lambda x: x[1], reverse=True)
         stocklist = []
-        for i in range(0, 10):
+        for i in range(0, 11):
             stocklist.append(sortlist[i][0])
         return stocklist
 
@@ -693,14 +672,14 @@ class Indicators:
         self.basket = []
         self.CCI = {}
 
-    def MakeEMA(self, MAdayrange, type, basket):
+    def MakeEMA(self, MAdayrange, EMAtype, basket):
         self.Madayrange = MAdayrange
         self.basket = basket
         MA1 = 0
         EMA1 = 0
         k = 2 / (MAdayrange + 1)
         result = []
-        if type == "M":
+        if EMAtype == "M":
             for i in range(len(self.basket)):
                 if i == MAdayrange - 1:
                     for j in range(0, MAdayrange):
@@ -714,7 +693,7 @@ class Indicators:
                     EMA1 = ((self.basket[i][5] - EMA1) * k) + EMA1
                     result.append([self.basket[i][0], self.basket[i][1], EMA1, self.basket[i][5]])
                     # [날짜,시간, 평균,종가]
-        if type == "D":
+        if EMAtype == "D":
             for i in range(len(self.basket)):
                 if i == MAdayrange - 1:
                     for j in range(0, MAdayrange):
@@ -750,11 +729,11 @@ class Indicators:
                 result.append([EMAbasket[i][0], EMAbasket[i][1], EMA1, EMAbasket[i][3]])
         return result  # m [날짜,시간, EMA, 종가], d [날짜,다음날고가증감률, EMA,오늘증감률]
 
-    def MakeMACDoscillator(self, type, MA1, MA2):
+    def MakeMACDoscillator(self, MACDtype, MA1, MA2):
         MACDbasket = []
         MACDoscillator = []
         comparerange = []
-        if type == "M":
+        if MACDtype == "M":
             for i in range(len(MA1)):
                 for k in range(len(MA2)):
                     if MA1[i][0] == MA2[k][0] and MA1[i][1] == MA2[k][1]:
@@ -770,7 +749,7 @@ class Indicators:
                         # 날짜, 시간, 오실레이터, 종가 | 날짜,다음날고가증감률, 오실레이터,오늘증감률
                         comparerange.append(int(MACDbasket[i][2] - signalbasket[k][2]))
                         break
-        if type == "D":
+        if MACDtype == "D":
             for i in range(len(MA1)):
                 for k in range(len(MA2)):
                     if MA1[i][0] == MA2[k][0]:
@@ -800,7 +779,7 @@ class Indicators:
                     MA += self.basket[i - k][4]
                 MA = MA / MAdayrange
                 result.append(
-                    [self.basket[i][0], round(MA, 3), self.basket[i][4], self.basket[i][6], self.basket[i][7]])
+                    [self.basket[i][0], round(MA, 2), self.basket[i][4], self.basket[i][6], self.basket[i][7]])
                 MA = 0
         self.MA = result
         return result  # [날짜, 평균, 오늘종가, 오늘증감률, 다음날고가증감률]
@@ -810,7 +789,7 @@ class Indicators:
         result = []
         for i in range(len(self.MA)):
             PPO = self.MA[i][2] / self.MA[i][1] * 100
-            result.append([self.MA[i][0], round(PPO, 3), self.MA[i][3], self.MA[i][4]])
+            result.append([self.MA[i][0], round(PPO, 2), self.MA[i][3], self.MA[i][4]])
         self.PPO = result
         return result  # {날짜 : [이격도 , 오늘증감률, 다음날고가증감률]}
 
@@ -863,7 +842,7 @@ class CheckToday:
                 for k in range(0, MAdayrange):
                     MA += self.basket[i - k][4]
                 MA = MA / MAdayrange
-                result.append([self.basket[i][0], round(MA, 3), self.basket[i][4]])
+                result.append([self.basket[i][0], round(MA, 2), self.basket[i][4]])
                 MA = 0
         self.MA = result
         return result  # [날짜, 평균, 오늘종가]
@@ -873,7 +852,7 @@ class CheckToday:
         result = []
         for i in range(len(self.MA)):
             PPO = self.MA[i][2] / self.MA[i][1] * 100
-            result.append([self.MA[i][0], round(PPO, 3)])
+            result.append([self.MA[i][0], round(PPO, 2)])
         self.PPO = result
         return result  # [날짜, 이격도]
 
@@ -892,7 +871,7 @@ class Strategy:
         for day in range(len(marketbasket)):
             if marketbasket[day][0] == todaydate:
                 print(todaydate)
-                beforemonth = marketbasket[day - 30][0]  # 최초는 20일, 30일 86.5 %
+                beforemonth = marketbasket[day - 30][0]
                 yesterday = marketbasket[day - 1][0]
                 stocklist = useppo.CheckStrogStock(beforemonth, yesterday, 2)
                 codelist = useppo.MackoverlapPPO(day, 5, stocklist)
@@ -971,8 +950,8 @@ class FileMethods:
         length = objRq.GetHeaderValue(2)
         for i in range(length):
             code = objRq.GetDataValue(0, i)
-            now = objRq.GetDataValue(1, i)  # 코드
-            start = objRq.GetDataValue(2, i)  # 현재가
+            now = objRq.GetDataValue(1, i)
+            start = objRq.GetDataValue(2, i)
             high = objRq.GetDataValue(3, i)
             low = objRq.GetDataValue(4, i)
             volume = objRq.GetDataValue(5, i)

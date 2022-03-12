@@ -1,7 +1,8 @@
+import time
+
 from totallib import *
 import telepot
 import schedule
-import time
 
 
 # 40만원으로 시작!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -42,18 +43,18 @@ def textbox(numtype, msg, deposit):
         bot.sendMessage(1886738532, text="프로그램을 종료해주세요.")
 
 
-def job1():
+def Checktoday():
     Connect()
     todaydate = int(datetime.today().strftime("%Y%m%d"))
     file = FileMethods()
     file.save_Info_from_marketeye(todaydate)
-    account = Account()
+    order = Account_and_Order()
     strategy = Strategy()
     qospilist = strategy.ppostrategy("코스피200", todaydate)
     qosdaqlist = strategy.ppostrategy("코스닥150", todaydate)
-    msg = account.buy(qosdaqlist, qospilist)
-    stockdeposit = account.stockdeposit()
-    deposit = account.deposit()
+    msg = order.buy(qosdaqlist, qospilist)
+    stockdeposit = order.stockdeposit()
+    deposit = order.deposit()
     if msg == 1:
         textbox(0, msg, deposit)
     else:
@@ -61,31 +62,32 @@ def job1():
     if len(stockdeposit[1]) != 0:
         for key, val in stockdeposit[1].items():
             if key in qospilist:
-                upprice = account.qospi_sellPrice_Quotation(val[1])
-                msg = account.reservation_sellorder(key, val[0], upprice)
+                upprice = Cal_Price().qospi_sellPrice_Quotation(val[1])
+                msg = order.reservation_sellorder(key, val[0], upprice)
                 textbox(2, msg, deposit)
             else:
-                upprice = account.qosdaq_sellPrice_Quotation(val[1])
-                msg = account.reservation_sellorder(key, val[0], upprice)
+                upprice = Cal_Price().qosdaq_sellPrice_Quotation(val[1])
+                msg = order.reservation_sellorder(key, val[0], upprice)
                 textbox(2, msg, deposit)
     return True
 
 
-def job3():  # 전 주문 취소
+def MarketpriceSell():  # 전 주문 취소
     Connect()
-    account = Account()
-    account.reservation_cencelorder()
-    msg = account.secondsell()
-    deposit = account.deposit()
+    order = Account_and_Order()
+    order.reservation_cencelorder()
+    msg = order.sellall()
+    deposit = order.deposit()
     textbox(3, msg, deposit)
 
 
 def HedGe():  # 30초마다 실행
     Connect()
-    deposit = 0
-    account = Account()
-    Hedge = account.hedge()
+    order = Account_and_Order()
+    Hedge = order.hedge()
+    GetLimitTime()
     if Hedge[0] == 4:
+        deposit = order.deposit()
         textbox(4, Hedge[1], deposit)
 
 
@@ -94,19 +96,19 @@ def shut_down():
     deposit = 0
     textbox(5, todaystock, deposit)
 
-refresh()
-job1()
-schedule.every().day.at("15:19:50").do(job1)
+ao = Account_and_Order()
+ao.deposit()
+schedule.every().day.at("15:19:50").do(Checktoday)
 schedule.every().day.at("15:10").do(refresh)
-schedule.every().day.at("11:30").do(job3)
+schedule.every().day.at("11:30").do(MarketpriceSell)
 schedule.every().day.at("22:00").do(shut_down)
 
 while True:
     schedule.run_pending()
     nowtime = int(datetime.today().strftime("%H%M%S"))
-    if nowtime <= 91050 or 113040 <= nowtime < 150954 or 151300 <= nowtime <= 151850:
+    if nowtime <= 91050 or 113000 <= nowtime < 150952 or 151300 <= nowtime <= 151930:
         Connect()
         time.sleep(5)
-    elif 91100 <= nowtime <= 112940:
+    elif 91100 <= nowtime <= 112950:
         HedGe()
         time.sleep(3)
