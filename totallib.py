@@ -277,10 +277,14 @@ class Account_and_Order:
         orderdic = {}
         if len(codelist) != 0:
             deposit = self.deposit()
-            if len(codelist) < 4:
-                deposit = int(deposit / 2)
-            hedge = deposit * 0.05  # 5프로 헷지
-            investment = deposit - hedge
+            if len(codelist) < 3:  # 종목 수
+                investment = int(deposit / 2)  # 투자금
+                balance = int(deposit / 2)  # 투자금을 제외한 나머지
+            else:  # 4종목 부터는 투자를 안하는 날을 추가해서 2배로 투자함
+                investment = deposit
+                balance = 0
+            hedge = investment * 0.05  # 5프로 헷지
+            investment = investment - hedge
             count = len(codelist)
             distribution = investment / count
             if len(qospilist) != 0:
@@ -294,7 +298,7 @@ class Account_and_Order:
                     succescode.append(self.buyorder(key, amount, val))
             # ---------추가매수-----------
             deposit = self.deposit()
-            investment = deposit - hedge
+            investment = deposit - balance - hedge
             for key, val in orderdic.items():
                 amount = int(investment / val)
                 if amount != 0:

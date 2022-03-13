@@ -1,5 +1,3 @@
-import time
-
 from totallib import *
 import telepot
 import schedule
