@@ -64,22 +64,22 @@ class Cal_Price:
         nowprice = MarketInfo().Getnowprice(qospi)
         for code, price in nowprice.items():
             if price < 1000:
-                price += 1
+                price += 1 * 4  # 동시호가에서 종가로 매수 해야해서 4호가 위로 주문 올림
                 nowprice[code] = price
             elif 1000 <= price < 5000:
-                price += 5
+                price += 5 * 4
                 nowprice[code] = price
             elif 5000 <= price < 10000:
-                price += 10
+                price += 10 * 4
                 nowprice[code] = price
             elif 10000 <= price < 50000:
-                price += 50
+                price += 50 * 4
                 nowprice[code] = price
             elif 50000 <= price < 100000:
-                price += 100
+                price += 100 * 4
                 nowprice[code] = price
             elif 500000 <= price:
-                price += 500
+                price += 500 * 4
                 nowprice[code] = price
         return nowprice
 
@@ -87,19 +87,19 @@ class Cal_Price:
         nowprice = MarketInfo().Getnowprice(qosdaq)
         for code, price in nowprice.items():
             if price < 1000:
-                price += 1
+                price += 1 * 4
                 nowprice[code] = price
             elif 1000 <= price < 5000:
-                price += 5
+                price += 5 * 4
                 nowprice[code] = price
             elif 5000 <= price < 10000:
-                price += 10
+                price += 10 * 4
                 nowprice[code] = price
             elif 10000 <= price < 50000:
-                price += 50
+                price += 50 * 4
                 nowprice[code] = price
             elif 50000 <= price:
-                price += 100
+                price += 100 * 4
                 nowprice[code] = price
         return nowprice
 
@@ -202,6 +202,20 @@ class Account_and_Order:
             return str(code + " - " + errMsg)
         return str(code + " - " + errMsg)
 
+    def buyendmarketcloseprice(self, code, amount):
+        endmarket = win32com.client.Dispatch("CpTrade.CpTd0322")
+        endmarket.SetInputValue(0, "2")  # 2: 매수
+        endmarket.SetInputValue(1, self.acc)  # 계좌번호
+        endmarket.SetInputValue(2, self.accFlag[0])  # 상품구분 - 주식 상품 중 첫번째
+        endmarket.SetInputValue(3, code)  # 종목코드 - 필요한 종목으로 변경 필요
+        endmarket.SetInputValue(4, amount)  # 수량
+        nRet = endmarket.BlockRequest()
+        rqStatus = endmarket.GetDibStatus()
+        errMsg = endmarket.GetDibMsg1()
+        if nRet != 0 or rqStatus != 0:
+            return str(code + " - " + errMsg)
+        return str(code + " - " + errMsg)
+
     def reservation_sellorder(self, code, amount, price):
         orderumdic = {}
         objStockOrder = win32com.client.Dispatch("CpTrade.CpTdNew9061")
@@ -292,19 +306,21 @@ class Account_and_Order:
             if len(qosdaqlist) != 0:
                 orderdic.update(Cal_Price().qosdaq_Price_Quotation(qosdaqlist))
             for key, val in orderdic.items():
-                amount = int(distribution / val)  # 지정가로 매수하는데 한 호가 위에 매수함. 시장가로 하게되면 30프로 위로 주문 올려서 예수금 모자람
+                amount = int(distribution / val)  # 장 후 동시호가로 매수함 4호가 위 매수
                 if amount != 0:
                     GetaccountLimitTime()
                     succescode.append(self.buyorder(key, amount, val))
             # ---------추가매수-----------
-            deposit = self.deposit()
-            investment = deposit - balance - hedge
-            for key, val in orderdic.items():
-                amount = int(investment / val)
-                if amount != 0:
-                    GetaccountLimitTime()
-                    succescode.append("(추가 매수)" + self.buyorder(key, amount, val))
-            return succescode
+            while True:
+                if int(datetime.today().strftime("%H%M%S")) >= 153001:
+                    deposit = self.deposit()
+                    investment = deposit - balance - hedge
+                    for key, val in orderdic.items():
+                        amount = int(investment / val)
+                        if amount != 0:
+                            GetaccountLimitTime()
+                            succescode.append("(추가 매수)" + self.buyendmarketcloseprice(key, amount))
+                    return succescode
         else:
             return 1
 

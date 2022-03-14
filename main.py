@@ -60,13 +60,15 @@ def Checktoday():
     if len(stockdeposit[1]) != 0:
         for key, val in stockdeposit[1].items():
             if key in qospilist:
-                upprice = Cal_Price().qospi_sellPrice_Quotation(val[1])
+                endprice = MarketInfo().Getnowprice([key])
+                upprice = Cal_Price().qospi_sellPrice_Quotation(endprice)
                 msg = order.reservation_sellorder(key, val[0], upprice)
-                textbox(2, msg, deposit)
+                textbox(2, msg+"(예약)", deposit)
             else:
-                upprice = Cal_Price().qosdaq_sellPrice_Quotation(val[1])
+                endprice = MarketInfo().Getnowprice([key])
+                upprice = Cal_Price().qosdaq_sellPrice_Quotation(endprice)
                 msg = order.reservation_sellorder(key, val[0], upprice)
-                textbox(2, msg, deposit)
+                textbox(2, msg+"(예약)", deposit)
     return True
 
 
@@ -96,7 +98,7 @@ def shut_down():
 
 ao = Account_and_Order()
 ao.deposit()
-schedule.every().day.at("15:19:50").do(Checktoday)
+schedule.every().day.at("15:29:55").do(Checktoday)
 schedule.every().day.at("15:10").do(refresh)
 schedule.every().day.at("11:30").do(MarketpriceSell)
 schedule.every().day.at("22:00").do(shut_down)
@@ -104,7 +106,7 @@ schedule.every().day.at("22:00").do(shut_down)
 while True:
     schedule.run_pending()
     nowtime = int(datetime.today().strftime("%H%M%S"))
-    if nowtime <= 91050 or 113000 <= nowtime < 150952 or 151300 <= nowtime <= 151930:
+    if nowtime <= 91050 or 113000 <= nowtime < 150952 or 151300 <= nowtime <= 152946:
         Connect()
         time.sleep(5)
     elif 91100 <= nowtime <= 112950:
