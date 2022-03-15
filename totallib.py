@@ -108,19 +108,19 @@ class Cal_Price:
         if price < 1000:
             return price
         elif 1000 <= price < 5000:
-            price = price - price % 5
+            price = price + (5 - price % 5)
             return price
         elif 5000 <= price < 10000:
-            price = price - price % 10
+            price = price + (10 - price % 10)
             return price
         elif 10000 <= price < 50000:
-            price = price - price % 50
+            price = price + (50 - price % 50)
             return price
         elif 50000 <= price < 100000:
-            price = price - price % 100
+            price = price + (100 - price % 100)
             return price
         elif 500000 <= price:
-            price = price - price % 500
+            price = price + (500 - price % 500)
             return price
 
     def qosdaq_sellPrice_Quotation(self, price):
@@ -128,16 +128,16 @@ class Cal_Price:
         if price < 1000:
             return price
         elif 1000 <= price < 5000:
-            price = price - price % 5
+            price = price + (5 - price % 5)
             return price
         elif 5000 <= price < 10000:
-            price = price - price % 10
+            price = price + (10 - price % 10)
             return price
         elif 10000 <= price < 50000:
-            price = price - price % 50
+            price = price + (50 - price % 50)
             return price
         elif 50000 <= price:
-            price = price - price % 100
+            price = price + (100 - price % 100)
             return price
 
 
