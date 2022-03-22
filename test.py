@@ -1,306 +1,253 @@
-from dd import *
-from docx import Document
-from tqdm import tqdm
-import numpy as np
+from totallib import *
 
-filelist = ['코스닥150','코스피100','코스피1000일', '코스닥1000일', '코스피결과-220114', '코스닥결과-220114']
+class Getbasket:
+    def __init__(self, market,first,second):
+        self.file = FileMethods()
+        self.indicators = Indicators()
+        self.codelist = self.file.GetStockList(market)
+        self.marketbasket = self.file.MarketDayList(market)
+        self.codedaybasket = {}
+        self.positivegeneralcount = 0
+        self.positiveparticularcount = 0
+        self.ocillatorlist = {}  # 날짜,다음날고가증감률, 오실레이터,오늘증감률
+        self.checkplus = {}
+        self.fistminuscount = {}
+        self.MackCodeDayBasket(market)
+        self.MackMacdOscillator(market, first, second)
 
-def GetDaylist(filename, marketkind):
-    Connect()
-    marketinfo = MaketInfo()
-    codelist = marketinfo.GetClearStockInfoByMarket(marketkind)
-    codelistinfile = []
-    file = CallFromFile()
-    kospibasket1 = file.DayList(filename, marketkind)
-    kospibasket2 = []
-    basket2 = {}
-    remaindaylist = {}
-    kospiremaindaylist = []
-    date = 0
-    for i in range(0, len(kospibasket1)):
-        if i < 720:
-            kospibasket2.append(kospibasket1[i])
-        elif i == 720:
-            date = kospibasket1[i][0]
-            kospiremaindaylist.append(kospibasket1[i])
-        else:
-            kospiremaindaylist.append(kospibasket1[i])
+    def DicInitialization(self):
+        for keys, val in self.codedaybasket.items():
+            self.checkplus[keys] = 0
+            self.fistminuscount[keys] = 0
+        return True
 
-    for code in codelist:
-        try:
-            basket1 = file.DayList(filename, code)
-            remaindaylist[code] = []
-            basket2[code] = []
-            for i in range(0, len(basket1)):  # 720일까지만 하기 basket2를 이용
-                if basket1[i][0] < date:
-                    basket2[code] += [basket1[i]]
-                elif basket1[i][0] >= date:
-                    remaindaylist[code] += [basket1[i]]
-            # PP0 = indicators.MakePPOFromFile(5,basket2)
-        except (FileNotFoundError, IndexError):
-            continue
+    def MackMacdOscillator(self, market, first, second):  # 꼭 따로 선언해서 만들어줘야함
+        self.MackCodeDayBasket(market)
+        self.DicInitialization()
+        for keys, val in self.codedaybasket.items():
+            if len(val) >= 26:
+                MA12 = self.indicators.MakeEMA(first, "D", val)
+                MA26 = self.indicators.MakeEMA(second, "D", val)
+                ocillator = self.indicators.MakeMACDoscillator("D", MA12, MA26)
+                self.ocillatorlist[keys] = ocillator
+        return True
 
-    return codelistinfile, kospibasket2, basket2, kospiremaindaylist, remaindaylist
 
-def GetDaylist2(filename, marketkind):
-    codelist = ['A005930', 'A000660', 'A005935', 'A207940', 'A035420', 'A051910', 'A005380', 'A006400', 'A035720', 'A000270', 'A005490', 'A105560', 'A096770', 'A012330', 'A066570', 'A068270', 'A323410', 'A028260', 'A055550', 'A377300', 'A034730', 'A259960', 'A302440', 'A051900', 'A009150', 'A086790', 'A015760', 'A032830', 'A003550', 'A036570', 'A011200', 'A017670', 'A352820', 'A018260', 'A316140', 'A033780', 'A361610', 'A010950', 'A034020', 'A000810', 'A010130', 'A003670', 'A003490', 'A251270', 'A329180', 'A011070', 'A090430', 'A034220', 'A402340', 'A030200', 'A024110', 'A009830', 'A011170', 'A326030', 'A383220', 'A138040', 'A009540', 'A018880', 'A086280', 'A004020', 'A011790', 'A032640', 'A097950', 'A069500', 'A088980', 'A000060', 'A006800', 'A035250', 'A021240', 'A011780', 'A020150', 'A137310', 'A000720', 'A010140', 'A161390', 'A028050', 'A005830', 'A071050', 'A008560', 'A000100', 'A267250', 'A271560', 'A241560', 'A003410', 'A139480', 'A180640', 'A016360', 'A005387', 'A000990', 'A307950', 'A078930', 'A006360', 'A029780', 'A005940', 'A047810', 'A036460', 'A002790', 'A008930', 'A002380', 'A272210', 'A371460', 'A010620', 'A128940', 'A007070', 'A008770', 'A004990', 'A014680', 'A026960', 'A052690', 'A138930', 'A028670', 'A000120', 'A088350', 'A047050', 'A012750', 'A204320', 'A042660', 'A336260', 'A012450', 'A039490', 'A112610', 'A030000', 'A285130', 'A336370', 'A051915', 'A282330', 'A047040', 'A375500', 'A064350', 'A005385', 'A023530', 'A000880', 'A298050', 'A006280', 'A004170', 'A001040', 'A001450', 'A093370', 'A298020', 'A010060', 'A252670', 'A278540', 'A000080', 'A102110', 'A111770', 'A011210', 'A009240', 'A081660', 'A012510', 'A003090']
-    codelistinfile = []
-    file = CallFromFile()
-    kospibasket1 = file.DayList(filename, marketkind)
-    kospibasket2 = []
-    basket2 = {}
-    remaindaylist = {}
-    kospiremaindaylist = []
-    date = 0
-    for i in range(0, len(kospibasket1)):
-        if i < 720:
-            kospibasket2.append(kospibasket1[i])
-        elif i == 720:
-            date = kospibasket1[i][0]
-            kospiremaindaylist.append(kospibasket1[i])
-        else:
-            kospiremaindaylist.append(kospibasket1[i])
+    def MackCodeDayBasket(self, market):
+        for code in self.codelist:
+            self.codedaybasket[code] = []
+            basket = self.file.StockDayList(market, code)
+            for i in range(len(basket)):
+                self.codedaybasket[code] += [basket[i]]
+        return True
 
-    for code in codelist:
-        try:
-            basket1 = file.DayList(filename, code)
-            remaindaylist[code] = []
-            basket2[code] = []
-            for i in range(0, len(basket1)):  # 720일까지만 하기 basket2를 이용
-                if basket1[i][0] < date:
-                    basket2[code] += [basket1[i]]
-                elif basket1[i][0] >= date:
-                    remaindaylist[code] += [basket1[i]]
-            # PP0 = indicators.MakePPOFromFile(5,basket2)
-        except (FileNotFoundError, IndexError):
-            continue
+    def CheckStrogStock(self, startdate, enddate, startpecent):
+        fitcount = {}
+        for keys, val in self.codedaybasket.items():
+            fitcount[keys] = 0
+        for keys, val in self.codedaybasket.items():
+            for i in range(len(val)):
+                if startdate < val[i][0] <= enddate and val[i][7] >= startpecent:
+                    fitcount[keys] += 1
+        sortlist = sorted(fitcount.items(), key=lambda x: x[1], reverse=True)
+        stocklist = []
+        for i in range(0, 11):
+            stocklist.append(sortlist[i][0])
+        return stocklist
 
-    return codelistinfile, kospibasket2, basket2, kospiremaindaylist, remaindaylist
-
-result = GetDaylist2('코스피1000일', 'KOSPI')
-k = []
-for MAdayrange in range(5,6):
-    total = 0
-    count = 0
-    totalpercent = 0
-    kospicodelist = result[0]  #리스트
-    kospibasket = result[1]   #리스트
-    stockbasket = result[2]  #코드 : 바스켓
-    kospiremaindaylist = result[3] #리스트
-    remaindaylist = result[4]  #코드 : 바스켓
-    middleresult = {}
-    print(MAdayrange)
-
-    percent = 0
-    for day in range(len(remaindaylist)):
-        generalcount = 0
-        particularcount = 0
-################################################
-        indicators = Indicators('kospi')
-        kospiPPO = indicators.MakePPOFromFile(MAdayrange, kospibasket)
-        kospiresult = MARKETResultFromFile(kospiPPO, -1)
-##################################################
-        checktoday = CheckToday()
-        basket = []
-        for keys, val in tqdm(stockbasket.items()):
-            if len(val) >= MAdayrange:
-                indicators = Indicators(keys)
-                stockPPO = indicators.MakePPOFromFile(MAdayrange, val)
-                lastdayresult = MakeTotalResult(stockPPO, 1)
-                middleresult[keys] = lastdayresult
-    #############하루 지남#################
-        kospibasket += [kospiremaindaylist[day]]
-        for keys,val in remaindaylist.items():
-            stockbasket[keys] += [val[day]]
-    ###################################
-        for i in range(0,MAdayrange):
-            basket.append(kospibasket[-MAdayrange+i])
-        todayPPO = list(checktoday.MakePPOFromFile(MAdayrange,basket).values())[0]
-        todayresult = checktoday.CheckTodayMarketFromFile(kospiresult, todayPPO)
-        if todayresult != 1:
-#######################################################
-            for keys, val in tqdm(stockbasket.items()):
-                if len(val) >= MAdayrange+1:
-                    checktoday = CheckToday()
-                    basket = []
-                    for i in range(0, MAdayrange):
-                        basket.append(val[-MAdayrange + i])
-                    todayPPO = list(checktoday.MakePPOFromFile(MAdayrange, basket).values())[0]
-                    if len(middleresult[keys]) != 0:
-                        todayresult = checktoday.CheckTodayStockFromFile(middleresult[keys], todayPPO)
-                        if todayresult == 1:
-                            generalcount += 1
-                            if val[-2][-1] >= 1:
-                                particularcount += 1
-            if generalcount == 0:
-                continue
+    def PositiveOS_Day(self, day, codelist):  # 양, 음수 모두 코스피 바스켓 안에 넣어서 이용해야함
+        todaydate = self.marketbasket[day][0]
+        if day > 40:  # 이정도 날짜부터 가중치가 거의 정확함
+            for keys, val in self.ocillatorlist.items():
+                for i in range(len(val) - 1):
+                    if todaydate == val[i][0] and i > 40 and keys in codelist:
+                        if val[i][2] < 0:
+                            self.fistminuscount[keys] += 1
+                            self.checkplus[keys] = 0
+                        elif val[i][2] >= 0 and self.fistminuscount[keys] > 1:
+                            self.checkplus[keys] += 1  # 첫번째 양수 오실래이터가 나온 날
+                            if self.checkplus[keys] == 1:  # 양수인 첫날 오실레이터 음수에서 양수로 가는 날임 몇배 할지 생각해보기
+                                if val[i][3] - val[i][4] >= 0:  # 다음날이 양수이고 양봉일때 , 이때 이격도 기울기가 전날보다 음수면 패스할것
+                                    self.positivegeneralcount += 1
+                                    print("- to +", keys)
+                                    if val[i][1] >= 1:
+                                        print(keys, "----")
+                                        self.positiveparticularcount += 1
+                            #     if val[i][3] - val[i][4] >= 0 and val[i + 1][2] >= val[i][2] and val[i + 1][3] - \
+                            #             val[i + 1][
+                            #                 4] > 0:  # 다음날이 양수이고 양봉일때 , 이때 이격도 기울기가 전날보다 음수면 패스할것
+                            #         self.positivegeneralcount += 1
+                            #         print("- to +", keys)
+                            #         if val[i + 1][1] >= 0.8:
+                            #             print(keys, "----")
+                            #             self.positiveparticularcount += 1
+                            #     if val[i + 1][3] - val[i + 1][4] > 0 and val[i + 2][2] >= val[i + 1][2] and val[i + 2][3] - \
+                            #             val[i + 2][
+                            #                 4] > 0:  # 다음날이 양수이고 양봉일때 , 이때 이격도 기울기가 전날보다 음수면 패스할것
+                            #         self.positivegeneralcount += 1
+                            #         print("- to +", keys)
+                            #         if val[i + 2][1] >= 0.6:
+                            #             print(keys, "----")
+                            #             self.positiveparticularcount += 1
+                            # if self.checkplus[keys] > 1:  # 보충하기
+                            #     if val[i - 1][2] > 0 and val[i][2] > 0 and val[i + 1][2] > 0 and (
+                            #             val[i][2] - val[i - 1][2]) / (i - (i - 1)) < 0 and (  # 수정해야함 기울기 안맞음
+                            #             val[i][2] - val[i + 1][2]) / (i - (i + 1)) > 0:
+                            #         self.positivegeneralcount += 1
+                            #         print(keys, (val[i][2] - val[i + 1][2]) / (i - (i + 1)), val[i + 1][1])
+                            #         if val[i + 1][1] >= 1:
+                            #             print(keys, "----", (val[i][2] - val[i + 1][2]) / (i - (i + 1)))
+                            #             self.positiveparticularcount += 1
+                        break
             try:
-                percent = particularcount / generalcount * 100
-                print('전체: ',generalcount,'성공: ', particularcount)
-                if percent <= 50:
-                    print(day)
-                count += 1
+                return round(self.positiveparticularcount / self.positivegeneralcount * 100, 2)
+                print("양수 전체: ", self.positivegeneralcount, " 증가: ", self.positiveparticularcount, " total: ",
+                      round(self.positiveparticularcount / self.positivegeneralcount * 100, 2), "%")
             except ZeroDivisionError:
-                percent = 0
-                count += 1
-                print('전체: ',generalcount,'성공: ', particularcount)
-            print(day + 1, "일")
-            print(round(percent,2))
-        else:
-            print('안삼')
-    k.append(round(percent,2))
-    print(k)
-print(k)
+                pass
+        return 0
 
-#
-# from creonlib import *
-# from docx import Document
-# from tqdm import tqdm
-# import numpy as np
-#
-# filelist = ['코스닥150','코스피100','코스피1000일', '코스닥1000일', '코스피결과-220114', '코스닥결과-220114']
-#
-# def GetDaylist(filename, marketkind):
-#     Connect()
-#     marketinfo = MaketInfo()
-#     codelist = marketinfo.GetClearStockInfoByMarket(marketkind)
-#     codelistinfile = []
-#     file = CallFromFile()
-#     kospibasket1 = file.DayList(filename, marketkind)
-#     kospibasket2 = []
-#     basket2 = {}
-#     remaindaylist = {}
-#     kospiremaindaylist = []
-#     date = 0
-#     for i in range(0, len(kospibasket1)):
-#         if i < 720:
-#             kospibasket2.append(kospibasket1[i])
-#         elif i == 720:
-#             date = kospibasket1[i][0]
-#             kospiremaindaylist.append(kospibasket1[i])
-#         else:
-#             kospiremaindaylist.append(kospibasket1[i])
-#
-#     for code in codelist:
-#         try:
-#             basket1 = file.DayList(filename, code)
-#             remaindaylist[code] = []
-#             basket2[code] = []
-#             for i in range(0, len(basket1)):  # 720일까지만 하기 basket2를 이용
-#                 if basket1[i][0] < date:
-#                     basket2[code] += [basket1[i]]
-#                 elif basket1[i][0] >= date:
-#                     remaindaylist[code] += [basket1[i]]
-#             # PP0 = indicators.MakePPOFromFile(5,basket2)
-#         except (FileNotFoundError, IndexError):
-#             continue
-#
-#     return codelistinfile, kospibasket2, basket2, kospiremaindaylist, remaindaylist
-#
-# def GetDaylist2(filename, marketkind):
-#     codelist = ['A005930', 'A000660', 'A005935', 'A207940', 'A035420', 'A051910', 'A005380', 'A006400', 'A035720', 'A000270', 'A005490', 'A105560', 'A096770', 'A012330', 'A066570', 'A068270', 'A323410', 'A028260', 'A055550', 'A377300', 'A034730', 'A259960', 'A302440', 'A051900', 'A009150', 'A086790', 'A015760', 'A032830', 'A003550', 'A036570', 'A011200', 'A017670', 'A352820', 'A018260', 'A316140', 'A033780', 'A361610', 'A010950', 'A034020', 'A000810', 'A010130', 'A003670', 'A003490', 'A251270', 'A329180', 'A011070', 'A090430', 'A034220', 'A402340', 'A030200', 'A024110', 'A009830', 'A011170', 'A326030', 'A383220', 'A138040', 'A009540', 'A018880', 'A086280', 'A004020', 'A011790', 'A032640', 'A097950', 'A069500', 'A088980', 'A000060', 'A006800', 'A035250', 'A021240', 'A011780', 'A020150', 'A137310', 'A000720', 'A010140', 'A161390', 'A028050', 'A005830', 'A071050', 'A008560', 'A000100', 'A267250', 'A271560', 'A241560', 'A003410', 'A139480', 'A180640', 'A016360', 'A005387', 'A000990', 'A307950', 'A078930', 'A006360', 'A029780', 'A005940', 'A047810', 'A036460', 'A002790', 'A008930', 'A002380', 'A272210', 'A371460', 'A010620', 'A128940', 'A007070', 'A008770', 'A004990', 'A014680', 'A026960', 'A052690', 'A138930', 'A028670', 'A000120', 'A088350', 'A047050', 'A012750', 'A204320', 'A042660', 'A336260', 'A012450', 'A039490', 'A112610', 'A030000', 'A285130', 'A336370', 'A051915', 'A282330', 'A047040', 'A375500', 'A064350', 'A005385', 'A023530', 'A000880', 'A298050', 'A006280', 'A004170', 'A001040', 'A001450', 'A093370', 'A298020', 'A010060', 'A252670', 'A278540', 'A000080', 'A102110', 'A111770', 'A011210', 'A009240', 'A081660', 'A012510', 'A003090']
-#     codelistinfile = []
-#     file = CallFromFile()
-#     kospibasket1 = file.DayList(filename, marketkind)
-#     kospibasket2 = []
-#     basket2 = {}
-#     remaindaylist = {}
-#     kospiremaindaylist = []
-#     date = 0
-#     for i in range(0, len(kospibasket1)):
-#         if i < 720:
-#             kospibasket2.append(kospibasket1[i])
-#         elif i == 720:
-#             date = kospibasket1[i][0]
-#             kospiremaindaylist.append(kospibasket1[i])
-#         else:
-#             kospiremaindaylist.append(kospibasket1[i])
-#
-#     for code in codelist:
-#         try:
-#             basket1 = file.DayList(filename, code)
-#             remaindaylist[code] = []
-#             basket2[code] = []
-#             for i in range(0, len(basket1)):  # 720일까지만 하기 basket2를 이용
-#                 if basket1[i][0] < date:
-#                     basket2[code] += [basket1[i]]
-#                 elif basket1[i][0] >= date:
-#                     remaindaylist[code] += [basket1[i]]
-#             # PP0 = indicators.MakePPOFromFile(5,basket2)
-#         except (FileNotFoundError, IndexError):
-#             continue
-#
-#     return codelistinfile, kospibasket2, basket2, kospiremaindaylist, remaindaylist
-#
-# result = GetDaylist2('코스피1000일', 'KOSPI')
-# k = []
-# for MAdayrange in range(3,30):
-#     total = 0
-#     count = 0
-#     totalpercent = 0
-#     kospicodelist = result[0]  #리스트
-#     kospibasket = result[1]   #리스트
-#     stockbasket = result[2]  #코드 : 바스켓
-#     kospiremaindaylist = result[3] #리스트
-#     remaindaylist = result[4]  #코드 : 바스켓
-#     middleresult = {}
-#     print(MAdayrange)
-#     for day in range(30):
-#         generalcount = 0
-#         particularcount = 0
-# ################################################
-#         indicators = Indicators('kospi')
-#         kospiPPO = indicators.MakePPOFromFile(MAdayrange, kospibasket)
-#         kospiresult = MARKETResultFromFile(kospiPPO, -1)
-# ##################################################
-#         checktoday = CheckToday()
-#         basket = []
-#         for keys, val in tqdm(stockbasket.items()):
-#             if len(val) >= MAdayrange:
-#                 indicators = Indicators(keys)
-#                 stockPPO = indicators.MakePPOFromFile(MAdayrange, val)
-#                 lastdayresult = MakeTotalResult(stockPPO, 1)
-#                 middleresult[keys] = lastdayresult
-#     #############하루 지남#################
-#         kospibasket += [kospiremaindaylist[day]]
-#         for keys,val in remaindaylist.items():
-#             stockbasket[keys] += [val[day]]
-#     ###################################
-#         for i in tqdm(range(0,MAdayrange)):
-#             basket.append(kospibasket[-MAdayrange+i])
-#         todayPPO = list(checktoday.MakePPOFromFile(MAdayrange,basket).values())[0]
-#         todayresult = checktoday.CheckTodayMarketFromFile(kospiresult, todayPPO)
-#         if todayresult != 1:
-# #######################################################
-#             for keys, val in tqdm(stockbasket.items()):
-#                 if len(val) >= MAdayrange+1:
-#                     checktoday = CheckToday()
-#                     basket = []
-#                     for i in range(0, MAdayrange):
-#                         basket.append(val[-MAdayrange + i])
-#                     todayPPO = list(checktoday.MakePPOFromFile(MAdayrange, basket).values())[0]
-#                     if len(middleresult[keys]) != 0:
-#                         todayresult = checktoday.CheckTodayStockFromFile(middleresult[keys], todayPPO)
-#                         if todayresult == 1:
-#                             generalcount += 1
-#                             if val[-2][-1] >= 1:
-#                                 particularcount += 1
-#             if generalcount == 0:
-#                 continue
-#             try:
-#                 percent = particularcount / generalcount * 100
-#                 print('전체: ',generalcount,'성공: ', particularcount)
-#                 count += 1
-#             except ZeroDivisionError:
-#                 percent = 0
-#                 count += 1
-#                 print('전체: ',generalcount,'성공: ', particularcount)
-#             total += percent
-#             totalpercent = total / count
-#             print(day + 1, "일")
-#             print(round(totalpercent,2), round(percent,2))
-#         else:
-#             print('안삼')
-#     k.append(round(totalpercent,2))
-#     print(k)
-# print(k)
+class Indicators:
+    def __init__(self):
+        self.MA = []
+        self.EMA = []
+        self.Madayrange = 0
+        self.EMAbasket = []
+        self.basket = []
+        self.CCI = {}
+
+    def MakeEMA(self, MAdayrange, type, basket):
+        self.Madayrange = MAdayrange
+        self.basket = basket
+        MA1 = 0
+        EMA1 = 0
+        k = 2 / (MAdayrange + 1)
+        result = []
+        if type == "M":
+            for i in range(len(self.basket)):
+                if i == MAdayrange - 1:
+                    for j in range(0, MAdayrange):
+                        MA1 += self.basket[i - j][5]
+                    MA1 = MA1 / MAdayrange
+
+                if i == MAdayrange:
+                    EMA1 = ((self.basket[i][5] - MA1) * k) + MA1
+
+                if i > MAdayrange:
+                    EMA1 = ((self.basket[i][5] - EMA1) * k) + EMA1
+                    result.append([self.basket[i][0], self.basket[i][1], EMA1, self.basket[i][5]])
+                    # [날짜,시간, 평균,종가]
+        if type == "D":
+            for i in range(len(self.basket)):
+                if i == MAdayrange - 1:
+                    for j in range(0, MAdayrange):
+                        MA1 += self.basket[i - j][4]
+                    MA1 = MA1 / MAdayrange
+
+                if i == MAdayrange:
+                    EMA1 = ((self.basket[i][4] - MA1) * k) + MA1
+
+                if i > MAdayrange:
+                    EMA1 = ((self.basket[i][4] - EMA1) * k) + EMA1
+                    result.append([self.basket[i][0], self.basket[i][7], EMA1, self.basket[i][4], self.basket[i][1]])
+                    # [날짜,다음날고가증감률, 평균,종가,오늘시가]
+        self.EMA = result
+        return result
+
+    def MakeEMAsignal(self, EMAdayrange, EMAbasket):
+        MA1 = 0
+        EMA1 = 0
+        k = 2 / (EMAdayrange + 1)
+        result = []
+        for i in range(len(EMAbasket)):
+            if i == EMAdayrange - 1:
+                for j in range(0, EMAdayrange):
+                    MA1 += EMAbasket[i - j][2]
+                MA1 = MA1 / EMAdayrange
+
+            if i == EMAdayrange:
+                EMA1 = ((EMAbasket[i][2] - MA1) * k) + MA1
+
+            if i > EMAdayrange:
+                EMA1 = ((EMAbasket[i][2] - EMA1) * k) + EMA1
+                result.append([EMAbasket[i][0], EMAbasket[i][1], EMA1, EMAbasket[i][3]])
+        return result  # m [날짜,시간, EMA, 종가], d [날짜,다음날고가증감률, EMA,오늘증감률]
+
+    def MakeMACDoscillator(self, type, MA1, MA2):
+        MACDbasket = []
+        MACDoscillator = []
+        comparerange = []
+        if type == "M":
+            for i in range(len(MA1)):
+                for k in range(len(MA2)):
+                    if MA1[i][0] == MA2[k][0] and MA1[i][1] == MA2[k][1]:
+                        MACDbasket.append([MA1[i][0], MA1[i][1], MA1[i][2] - MA2[k][2], MA1[i][3]])
+                        break
+            signalbasket = self.MakeEMAsignal(9, MACDbasket)
+            for i in range(len(MACDbasket)):
+                for k in range(len(signalbasket)):
+                    if MACDbasket[i][0] == signalbasket[k][0] and MACDbasket[i][1] == signalbasket[k][1]:
+                        MACDoscillator.append(
+                            [MACDbasket[i][0], MACDbasket[i][1], float(round(MACDbasket[i][2] - signalbasket[k][2], 2)),
+                             MACDbasket[i][3]])
+                        # 날짜, 시간, 오실레이터, 종가 | 날짜,다음날고가증감률, 오실레이터,오늘증감률
+                        comparerange.append(int(MACDbasket[i][2] - signalbasket[k][2]))
+                        break
+        if type == "D":
+            for i in range(len(MA1)):
+                for k in range(len(MA2)):
+                    if MA1[i][0] == MA2[k][0]:
+                        MACDbasket.append([MA1[i][0], MA1[i][1], MA1[i][2] - MA2[k][2], MA1[i][3], MA1[i][4]])
+                        break
+            signalbasket = self.MakeEMAsignal(9, MACDbasket)
+            for i in range(len(MACDbasket)):
+                for k in range(len(signalbasket)):
+                    if MACDbasket[i][0] == signalbasket[k][0]:
+                        MACDoscillator.append(
+                            [MACDbasket[i][0], MACDbasket[i][1], float(round(MACDbasket[i][2] - signalbasket[k][2], 2)),
+                             MACDbasket[i][3], MACDbasket[i][4]])
+                        # 날짜, 시간, 오실레이터, 종가 | 날짜,다음날고가증감률, 오실레이터,종가,시가
+                        comparerange.append(int(MACDbasket[i][2] - signalbasket[k][2]))
+                        break
+        ocillator = MACDoscillator
+        return ocillator  # 날짜, 다음날고가증감률, 오실레이터, 종가, 시가
+
+#first 11 이상 second 10 다음 하기
+# qospi = Getbasket("코스피200")
+result = []
+for first in range(6,24):
+    for second in range(5,24):
+        print(first,second,"--------------------------")
+        qosdaq = Getbasket("코스피200",first,second)
+        marketbasket = qosdaq.marketbasket
+        for day in range(len(marketbasket)):
+            todatdate = marketbasket[day][0]
+            print(todatdate, day)
+            if day > 40:
+                beforemonth = marketbasket[day - 30][0]
+                yesterday = marketbasket[day - 1][0]
+                # stocklist = qospi.CheckStrogStock(beforemonth, yesterday, 2)
+                # qospi.PositiveOS_Day(day, stocklist)
+                stocklist = qosdaq.CheckStrogStock(beforemonth, yesterday, 2)
+                qosdaq.PositiveOS_Day(day, stocklist)
+                if day == 501:
+                    try:
+                        re = round(qosdaq.positiveparticularcount / qosdaq.positivegeneralcount * 100, 2)
+                        result.append([f"{first} - {second}", qosdaq.positivegeneralcount, re])
+                    except:
+                        result.append(0)
+        print(result)
+
+# qosdaq = Getbasket("코스닥150",10,7)
+# qospi = Getbasket("코스피200",11,20)
+# marketbasket = qospi.marketbasket
+# for day in range(len(marketbasket)):
+#     todatdate = marketbasket[day][0]
+#     print(todatdate, day)
+#     if day > 40:
+#         beforemonth = marketbasket[day - 30][0]
+#         yesterday = marketbasket[day - 1][0]
+#         stocklist = qospi.CheckStrogStock(beforemonth, yesterday, 5)
+#         qospi.PositiveOS_Day(day, stocklist)
+        # stocklist = qosdaq.CheckStrogStock(beforemonth, yesterday, 5)
+        # qosdaq.PositiveOS_Day(day, stocklist)
