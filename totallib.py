@@ -1,3 +1,7 @@
+import ast
+import json
+
+import numpy as np
 from pykrx import stock
 import win32com.client
 from datetime import datetime
@@ -64,22 +68,22 @@ class Cal_Price:
         nowprice = MarketInfo().Getnowprice(qospi)
         for code, price in nowprice.items():
             if price < 1000:
-                price += 1 * 4  # 동시호가에서 종가로 매수 해야해서 4호가 위로 주문 올림
+                price += 1 * 10  # 동시호가에서 종가로 매수 해야해서 4호가 위로 주문 올림
                 nowprice[code] = price
             elif 1000 <= price < 5000:
-                price += 5 * 4
+                price += 5 * 10
                 nowprice[code] = price
             elif 5000 <= price < 10000:
-                price += 10 * 4
+                price += 10 * 10
                 nowprice[code] = price
             elif 10000 <= price < 50000:
-                price += 50 * 4
+                price += 50 * 10
                 nowprice[code] = price
             elif 50000 <= price < 100000:
-                price += 100 * 4
+                price += 100 * 10
                 nowprice[code] = price
             elif 500000 <= price:
-                price += 500 * 4
+                price += 500 * 10
                 nowprice[code] = price
         return nowprice
 
@@ -87,19 +91,19 @@ class Cal_Price:
         nowprice = MarketInfo().Getnowprice(qosdaq)
         for code, price in nowprice.items():
             if price < 1000:
-                price += 1 * 4
+                price += 1 * 10
                 nowprice[code] = price
             elif 1000 <= price < 5000:
-                price += 5 * 4
+                price += 5 * 10
                 nowprice[code] = price
             elif 5000 <= price < 10000:
-                price += 10 * 4
+                price += 10 * 10
                 nowprice[code] = price
             elif 10000 <= price < 50000:
-                price += 50 * 4
+                price += 50 * 10
                 nowprice[code] = price
             elif 50000 <= price:
-                price += 100 * 4
+                price += 100 * 10
                 nowprice[code] = price
         return nowprice
 
@@ -310,7 +314,7 @@ class Account_and_Order:
                 if amount != 0:
                     GetaccountLimitTime()
                     succescode.append(self.buyorder(key, amount, val))
-            # ---------추가매수-----------
+            #---------추가매수-----------
             while True:
                 if int(datetime.today().strftime("%H%M%S")) >= 153001:
                     deposit = self.deposit()
@@ -505,9 +509,10 @@ class MarketInfo:
 
     def Getnowprice(self, codelist):
         pricedic = {}
-        rqField = [0, 4]
+        rqField = [0, 28]
         self.objRq.SetInputValue(0, rqField)
         self.objRq.SetInputValue(1, codelist)
+        # self.objRq.SetInputValue(28, ord("2"))  # 0 장 전 , 1 동시호가 , 2 장 중
         GetLimitTime()
         self.objRq.BlockRequest()
         length = self.objRq.GetHeaderValue(2)
@@ -561,13 +566,14 @@ class PPOMethod:
 
     def Condition_Setting(self, PPO, increaserate):
         self.DicInitialize(PPO)
-        for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):
-            for k in range(len(PPO)):
+        for k in range(len(PPO)):
+            for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):
                 if self.PPOrange[0] + i <= PPO[k][1] < self.PPOrange[0] + i + 1:
                     self.PPOrangecount[self.PPOrange[0] + i] += 1
                     self.daylist[self.PPOrange[0] + i] += [PPO[k][0]]
                     if PPO[k][3] >= increaserate:
                         self.PPOrangePaticularcount[self.PPOrange[0] + i] += 1
+                    break
         for i in range(round(self.PPOrange[-1] + 1 - self.PPOrange[0])):  # 최종확률구하기
             try:
                 self.PPOrangePercent[self.PPOrange[0] + i] = round(
@@ -598,41 +604,46 @@ class UsePPO:
         self.totalresult = TotalResult()
         self.codedaybasket = {}
         self.overlapppo = {}
+        self.Gap_ppo = {}
         self.generalcount = 1
         self.particularcount = 1
         self.MackCodeDayBasket(market)
 
     def MackCodeDayBasket(self, market):
         for code in self.codelist:
-            self.codedaybasket[code] = []
-            basket = self.file.StockDayList(market, code)
-            for i in range(len(basket)):
-                self.codedaybasket[code] += [basket[i]]
+            self.codedaybasket[code] = self.file.StockDayList(market, code)
         return True
 
     def CheckStrogStock(self, startdate, enddate, startpecent):
         fitcount = {}
         for keys, val in self.codedaybasket.items():
             fitcount[keys] = 0
-        for keys, val in self.codedaybasket.items():
             for i in range(len(val)):
                 if startdate < val[i][0] <= enddate and val[i][7] >= startpecent:
                     fitcount[keys] += 1
         sortlist = sorted(fitcount.items(), key=lambda x: x[1], reverse=True)
         stocklist = []
+        stocklist_gap = []
+        for i in range(0, 40):
+            stocklist_gap.append(sortlist[i][0])
         for i in range(0, 11):
             stocklist.append(sortlist[i][0])
-        return stocklist
+        return stocklist, stocklist_gap
 
     def MackoverlapPPO(self, day, MAdayrange, stocklist):  # 코스닥 500일기준 - 85.6 % , (코스피 600일 83.7 % 유동성이 낮음)
         codelist = []
         todaydate = self.marketbasket[day][0]
         for keys, val in self.codedaybasket.items():
             todaystockbasket = []
+            # if keys in stocklist and len(val) == 501 and val[-1][0] == todaydate:  # 500로 맞춤
+            #     newval = np.array([val[i] for i in range(0, 500)], dtype=np.float64)
+            #     stockPPO = self.indicators.MakePPOFromFile_np(MAdayrange, newval)
+            #     stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
             if keys in stocklist and len(val) == 501 and val[-1][0] == todaydate:  # 500로 맞춤
                 newval = [val[i] for i in range(0, 500)]
                 stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
                 stockoverlapppolist = self.totalresult.StockOverlapppoListFromFile(stockPPO, 1)
+                #------------------------------------------------------
                 self.overlapppo[keys] = stockoverlapppolist
                 for i in range(0, MAdayrange):
                     todaystockbasket.append(val[-MAdayrange + i])
@@ -641,6 +652,42 @@ class UsePPO:
                 if todayresult == 1:
                     codelist.append(keys)
         return codelist
+
+    def MackoverlapPPO_gap(self, day, MAdayrange, stocklist_gap):
+        codelist = []
+        todaydate = self.marketbasket[day][0]
+        for keys, val in self.codedaybasket.items():
+            todaystockbasket = []
+            if keys in stocklist_gap and len(val) == 501 and val[-1][0] == todaydate:  # 500로 맞춤
+                newval = [val[i] for i in range(0, 500)]
+                stockPPO = self.indicators.MakePPOFromFile(MAdayrange, newval)
+                gap = self.gap_ppo(stockPPO)
+                self.Gap_ppo[keys] = gap
+                for i in range(0, MAdayrange + 1):
+                    todaystockbasket.append(val[-MAdayrange + i - 1])  # 어제 이격도도 같이 알아와야해서 + 1 해줌
+                if todaystockbasket[-1][4] - todaystockbasket[-2][4] >= 0:
+                    continue
+                todayPPO = self.checktoday.MakePPOFromFile_gap(MAdayrange, todaystockbasket)[1]
+                todayresult = self.checktoday.CheckTodayStockFromFile_gap(self.Gap_ppo[keys], todayPPO)
+                if todayresult == 1:
+                    codelist.append(keys)
+        return codelist
+
+    def gap_ppo(self, ppo):
+        general_gap = {}
+        particular_gap = {}
+        result = []
+        for i in range(1, len(ppo)):
+            general_gap[round(ppo[i][1] - ppo[i - 1][1], 0)] = 0
+            particular_gap[round(ppo[i][1] - ppo[i - 1][1], 0)] = 0
+        for i in range(1, len(ppo)):
+            general_gap[round(ppo[i][1] - ppo[i - 1][1], 0)] += 1
+            if ppo[i][-1] > 2:
+                particular_gap[round(ppo[i][1] - ppo[i - 1][1], 0)] += 1
+        for key, val in particular_gap.items():
+            if val / general_gap[key] * 100 > 85 and 2 <= val <= 5:
+                result.append(key)
+        return result
 
     def MackoverlapPPO2(self, day, MAdayrange, stocklist):  # MackCodeDayBasket() 꼭 먼저 실행해줘야함
         if day > 500:  # 1년 데이터 축적
@@ -813,6 +860,45 @@ class Indicators:
         self.PPO = result
         return result  # {날짜 : [이격도 , 오늘증감률, 다음날고가증감률]}
 
+    def MakeMAFromFile_np(self, MAdayrange, basket):
+        MA = [[]]
+        self.Madayrange = MAdayrange
+        self.basket = basket
+        for i in range(len(self.basket)):
+            if i == MAdayrange - 1:
+                ma = round(self.basket[i-MAdayrange+1:i+1, 4:5].mean(), 2)  # 평균
+                MA = np.array([[ma]], dtype=np.float64)
+            elif i > MAdayrange - 1:
+                ma = round(self.basket[i - MAdayrange + 1:i + 1, 4:5].mean(), 2)  # 평균
+                ma = np.array([[ma]], dtype=np.float64)
+                MA = np.append(MA, ma, axis=0)
+        indexes = [0, 1, 2, 3]
+        self.basket = np.delete(self.basket, indexes, axis=0)
+        indexes = [1,2,3,5]
+        self.basket = np.delete(self.basket, indexes, axis=1)
+        result = np.insert(self.basket, 1, MA, axis=1)
+        # result = self.basket[:, 0:1]
+        # self.basket = np.delete(self.basket, indexes, axis=0)
+        # result = np.append(result, MA[:, 0:1], axis=1)
+        # result = np.append(result, self.basket[:, 4:5], axis=1)
+        # result = np.append(result, self.basket[:, 6:7], axis=1)
+        # result = np.append(result, self.basket[:, 7:8], axis=1)
+        self.MA = result
+        return result  # [날짜, 평균, 오늘종가, 오늘증감률, 다음날고가증감률]
+
+    def MakePPOFromFile_np(self, MAdayrange, basket):
+        self.MakeMAFromFile_np(MAdayrange, basket)
+        middle_PPO = np.divide(self.MA[:, 2:3], self.MA[:, 1:2])
+        PPO = np.multiply(middle_PPO, 100)
+        indexes = [1]
+        self.basket = np.delete(self.MA, indexes, axis=1)
+        result = np.insert(self.basket, 1, PPO, axis=1)
+        # date = np.append(self.MA[:, 0:1], PPO, axis=1)
+        # rate_change = np.append(date, self.MA[:, 3:4], axis=1)
+        # result = np.append(rate_change, self.MA[:, 4:5], axis=1)
+        self.PPO = result
+        return result  # {날짜 : [이격도 , 오늘증감률, 다음날고가증감률]}
+
     def MakeCCI(self, MAdayrange, basket):
         self.basket = basket
         Mlist = []
@@ -876,10 +962,24 @@ class CheckToday:
         self.PPO = result
         return result  # [날짜, 이격도]
 
+    def MakePPOFromFile_gap(self, MAdayrange, basket):
+        self.MakeMAFromFile(MAdayrange, basket)
+        middleresult = []
+        for i in range(len(self.MA)):
+            PPO = self.MA[i][2] / self.MA[i][1] * 100
+            middleresult.append([self.MA[i][0], round(PPO, 2)])
+        result = [middleresult[-1][0], round(middleresult[-1][-1] - middleresult[-2][-1], 0)]
+        return result  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률]
+
     def CheckTodayStockFromFile(self, middleresult, todayPPO):  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률]
         for i in range(len(middleresult)):
             if middleresult[i] <= todayPPO[1] < middleresult[i] + 1:
                 return 1
+        return 0
+
+    def CheckTodayStockFromFile_gap(self, middleresult, todayPPO):  # [날짜, 이격도 , 오늘증감률, 다음날고가증감률]
+        if todayPPO in middleresult:
+            return 1
         return 0
 
 
@@ -894,7 +994,7 @@ class Strategy:
                 beforemonth = marketbasket[day - 30][0]
                 yesterday = marketbasket[day - 1][0]
                 stocklist = useppo.CheckStrogStock(beforemonth, yesterday, 2)
-                codelist = useppo.MackoverlapPPO(day, 5, stocklist)
+                codelist = useppo.MackoverlapPPO(day, 5, stocklist[0])
         return codelist
 
 
@@ -1006,7 +1106,7 @@ class FileMethods:
     def MarketDayList(self, filename):
         f = open(f"C:\\주가정보\\{filename}\\{filename}.txt", 'r', encoding='utf-8')
         txt = f.read()
-        result = self.ChangeDayList(txt)
+        result = json.loads(txt)
         f.close()
         return result
 
