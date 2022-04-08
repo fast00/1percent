@@ -1,6 +1,5 @@
-import ast
-import json
 
+import json
 import numpy as np
 from pykrx import stock
 import win32com.client
